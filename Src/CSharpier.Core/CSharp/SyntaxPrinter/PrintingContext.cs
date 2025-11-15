@@ -36,6 +36,15 @@ internal class PrintingContext
         public required string LineEnding { get; init; }
         public required int IndentSize { get; init; }
         public required bool UseTabs { get; init; }
+        public required BraceNewLine NewLineBeforeOpenBrace { get; init; }
+
+        public bool NewLineBeforeElse { get; init; } = true;
+        public bool NewLineBeforeCatch { get; init; } = true;
+        public bool NewLineBeforeFinally { get; init; } = true;
+        public bool? NewLineBeforeMembersInObjectInitializers { get; init; }
+        public bool? NewLineBeforeMembersInAnonymousTypes { get; init; }
+        public bool? NewLineBetweenQueryExpressionClauses { get; init; }
+        public bool UsePrettierStyleTrailingCommas { get; init; } = true;
     }
 
     public class PrintingContextState

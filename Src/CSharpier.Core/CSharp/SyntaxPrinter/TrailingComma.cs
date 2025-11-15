@@ -13,6 +13,11 @@ internal static class TrailingComma
         bool skipIfBreak = false
     )
     {
+        if (!context.Options.UsePrettierStyleTrailingCommas)
+        {
+            return Doc.Null;
+        }
+
         var printedToken = Token.Print(SyntaxFactory.Token(SyntaxKind.CommaToken), context);
 
         return closingToken.LeadingTrivia.Any(o => o.IsDirective) ? Doc.Null

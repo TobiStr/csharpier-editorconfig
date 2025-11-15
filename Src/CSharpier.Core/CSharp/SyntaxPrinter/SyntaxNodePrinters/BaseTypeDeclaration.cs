@@ -155,8 +155,12 @@ internal static class BaseTypeDeclaration
 
             DocUtilities.RemoveInitialDoubleHardLine(membersContent);
 
+            var separator = context.Options.NewLineBeforeOpenBrace.HasFlag(BraceNewLine.Types)
+                ? Doc.HardLine
+                : Doc.Line;
+
             docs.Add(
-                Doc.HardLine,
+                separator,
                 Token.Print(node.OpenBraceToken, context),
                 membersContent,
                 Doc.HardLine,

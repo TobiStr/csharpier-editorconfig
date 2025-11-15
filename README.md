@@ -1,9 +1,20 @@
 ![CSharpier](./banner.svg)
 
-CSharpier is an opinionated code formatter for c# and XML. It parses your code and re-prints it using its own rules. 
-The printing process was ported from [prettier](https://github.com/prettier/prettier) but has evolved over time.
+This repository is a fork of [belav/csharpier](https://github.com/belav/csharpier) that keeps up to date with the original while adding additional configuration via `.editorconfig`.
 
-CSharpier provides a few basic options that affect formatting and has no plans to add more. It follows the [Option Philosophy](https://prettier.io/docs/en/option-philosophy.html) of prettier.
+The upstream CSharpier project is an opinionated code formatter for C# and XML. It parses your code and re-prints it using its own rules. The printing process was ported from [prettier](https://github.com/prettier/prettier) but has evolved over time.
+
+This fork keeps the same core behavior, but extends configuration so that more of the existing C# formatting options from `.editorconfig` can be honored. For example:
+
+- `csharp_new_line_before_open_brace` (for types, methods, control blocks)
+- `csharp_new_line_before_else`, `csharp_new_line_before_catch`, `csharp_new_line_before_finally`
+- `csharp_new_line_before_members_in_object_initializers`
+- `csharp_new_line_before_members_in_anonymous_types`
+- `csharp_new_line_between_query_expression_clauses`
+- `csharpier_use_prettier_style_trailing_commas`
+- `csharpier_include_generated`, `csharpier_trim_initial_lines`
+
+See `docs/Configuration.md` for details.
 
 ### Quick Start
 Install CSharpier globally using the following command.

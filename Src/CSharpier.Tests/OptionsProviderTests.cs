@@ -627,6 +627,186 @@ indent_size = 2
     }
 
     [Test]
+    public async Task Should_Support_EditorConfig_NewLineBeforeOpenBrace()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "c:/test/.editorconfig",
+            """
+            [*]
+            csharp_new_line_before_open_brace = types,methods,control_blocks
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+
+        result
+            .NewLineBeforeOpenBrace.Should()
+            .Be(
+                BraceNewLine.Types
+                | BraceNewLine.Methods
+                | BraceNewLine.ControlBlocks
+            );
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Should_Support_EditorConfig_NewLineBeforeElse(bool value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "c:/test/.editorconfig",
+            @"
+[*]
+csharp_new_line_before_else = " + value.ToString().ToLower() + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        result.NewLineBeforeElse.Should().Be(value);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Should_Support_EditorConfig_NewLineBeforeCatch(bool value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "c:/test/.editorconfig",
+            @"
+[*]
+csharp_new_line_before_catch = " + value.ToString().ToLower() + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        result.NewLineBeforeCatch.Should().Be(value);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Should_Support_EditorConfig_NewLineBeforeFinally(bool value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "c:/test/.editorconfig",
+            @"
+[*]
+csharp_new_line_before_finally = " + value.ToString().ToLower() + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        result.NewLineBeforeFinally.Should().Be(value);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    [TestCase(null)]
+    public async Task Should_Support_EditorConfig_NewLineBeforeMembersInObjectInitializers(
+        bool? value
+    )
+    {
+        var context = new TestContext();
+
+        if (value.HasValue)
+        {
+            context.WhenAFileExists(
+                "c:/test/.editorconfig",
+                @"
+[*]
+csharp_new_line_before_members_in_object_initializers = " + value.Value.ToString().ToLower() + @"
+"
+            );
+        }
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        result.NewLineBeforeMembersInObjectInitializers.Should().Be(value);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    [TestCase(null)]
+    public async Task Should_Support_EditorConfig_NewLineBeforeMembersInAnonymousTypes(
+        bool? value
+    )
+    {
+        var context = new TestContext();
+
+        if (value.HasValue)
+        {
+            context.WhenAFileExists(
+                "c:/test/.editorconfig",
+                @"
+[*]
+csharp_new_line_before_members_in_anonymous_types = " + value.Value.ToString().ToLower() + @"
+"
+            );
+        }
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        result.NewLineBeforeMembersInAnonymousTypes.Should().Be(value);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    [TestCase(null)]
+    public async Task Should_Support_EditorConfig_NewLineBetweenQueryExpressionClauses(
+        bool? value
+    )
+    {
+        var context = new TestContext();
+
+        if (value.HasValue)
+        {
+            context.WhenAFileExists(
+                "c:/test/.editorconfig",
+                @"
+[*]
+csharp_new_line_between_query_expression_clauses = " + value.Value.ToString().ToLower() + @"
+"
+            );
+        }
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        result.NewLineBetweenQueryExpressionClauses.Should().Be(value);
+    }
+
+    [Test]
+    public async Task Should_Support_EditorConfig_IncludeGenerated()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "c:/test/.editorconfig",
+            """
+            [*.cs]
+            csharpier_include_generated = true
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+
+        result.IncludeGenerated.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Should_Support_EditorConfig_TrimInitialLines()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "c:/test/.editorconfig",
+            """
+            [*.cs]
+            csharpier_trim_initial_lines = false
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+
+        result.TrimInitialLines.Should().BeFalse();
+    }
+
+    [Test]
     public async Task Should_Return_IndentSize_For_Formatter_In_Editorconfig()
     {
         var context = new TestContext();

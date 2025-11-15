@@ -35,6 +35,7 @@ public static class XmlFormatter
                     LineEnding = lineEnding,
                     IndentSize = printerOptions.IndentSize,
                     UseTabs = printerOptions.UseTabs,
+                    NewLineBeforeOpenBrace = BraceNewLine.All,
                 },
             };
             var doc = Node.Print(rootNode, printingContext);

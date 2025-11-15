@@ -7,6 +7,14 @@ public class CodeFormatterOptions
     public int IndentSize { get; init; } = 4;
     public EndOfLine EndOfLine { get; init; } = EndOfLine.Auto;
     public bool IncludeGenerated { get; init; }
+    public BraceNewLine NewLineBeforeOpenBrace { get; init; } = BraceNewLine.All;
+    public bool NewLineBeforeElse { get; init; } = true;
+    public bool NewLineBeforeCatch { get; init; } = true;
+    public bool NewLineBeforeFinally { get; init; } = true;
+    public bool? NewLineBeforeMembersInObjectInitializers { get; init; }
+    public bool? NewLineBeforeMembersInAnonymousTypes { get; init; }
+    public bool? NewLineBetweenQueryExpressionClauses { get; init; }
+    public bool UsePrettierStyleTrailingCommas { get; init; } = true;
 
     internal PrinterOptions ToPrinterOptions()
     {
@@ -17,6 +25,16 @@ public class CodeFormatterOptions
             IndentSize = this.IndentSize,
             EndOfLine = this.EndOfLine,
             IncludeGenerated = this.IncludeGenerated,
+            NewLineBeforeOpenBrace = this.NewLineBeforeOpenBrace,
+            NewLineBeforeElse = this.NewLineBeforeElse,
+            NewLineBeforeCatch = this.NewLineBeforeCatch,
+            NewLineBeforeFinally = this.NewLineBeforeFinally,
+            NewLineBeforeMembersInObjectInitializers =
+                this.NewLineBeforeMembersInObjectInitializers,
+            NewLineBeforeMembersInAnonymousTypes = this.NewLineBeforeMembersInAnonymousTypes,
+            NewLineBetweenQueryExpressionClauses =
+                this.NewLineBetweenQueryExpressionClauses,
+            UsePrettierStyleTrailingCommas = this.UsePrettierStyleTrailingCommas,
         };
     }
 }
