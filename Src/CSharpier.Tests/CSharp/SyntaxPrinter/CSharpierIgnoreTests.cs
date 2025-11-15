@@ -1,3 +1,4 @@
+using CSharpier.Core;
 using CSharpier.Core.CSharp.SyntaxPrinter;
 using FluentAssertions;
 using NUnit.Framework;
@@ -73,6 +74,7 @@ public string Example
                         LineEnding = Environment.NewLine,
                         IndentSize = 4,
                         UseTabs = false,
+                        NewLineBeforeOpenBrace = BraceNewLine.All,
                     },
                 }
             )

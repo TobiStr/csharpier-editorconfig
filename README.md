@@ -1,19 +1,27 @@
 ![CSharpier](./banner.svg)
 
-CSharpier is an opinionated code formatter for c# and XML. It parses your code and re-prints it using its own rules. 
-The printing process was ported from [prettier](https://github.com/prettier/prettier) but has evolved over time.
+This repository is a fork of [belav/csharpier](https://github.com/belav/csharpier) that keeps up to date with the original while adding additional configuration via `.editorconfig`.
 
-CSharpier provides a few basic options that affect formatting and has no plans to add more. It follows the [Option Philosophy](https://prettier.io/docs/en/option-philosophy.html) of prettier.
+The upstream CSharpier project is an opinionated code formatter for C# and XML. It parses your code and re-prints it using its own rules. The printing process was ported from [prettier](https://github.com/prettier/prettier) but has evolved over time.
+
+This fork is for those, who don't like the default newline behavior (which wastes massive lines of code) and want to adapt it. It keeps the same core behavior, but extends configuration so that more of the existing C# formatting options from `.editorconfig` can be honored. For example:
+
+- `csharp_new_line_before_open_brace` (for types, methods, control blocks)
+- `csharp_new_line_before_else`, `csharp_new_line_before_catch`, `csharp_new_line_before_finally`
+- `csharp_new_line_before_members_in_object_initializers`
+- `csharp_new_line_before_members_in_anonymous_types`
+- `csharp_new_line_between_query_expression_clauses`
+- `csharpier_use_prettier_style_trailing_commas`
+- `csharpier_include_generated`, `csharpier_trim_initial_lines`
+
+See `docs/Configuration.md` for details.
 
 ### Quick Start
-Install CSharpier globally using the following command.
+(Optional) Install the original CSharpier globally using the following command.
 ```bash
 dotnet tool install csharpier -g
 ```
-Then format the contents of a directory and its children with the following command.
-```bash
-csharpier format .
-```
+Install the Visual Studio or Visual Studio Code Extension and configure it to override the default CSharpier Executable with the executable built with this repo, or simply replace the executable in `\AppData\Local\CSharpier` folder.
 
 CSharpier can also format [on save in your editor](https://csharpier.com/docs/Editors) or as a [pre-commit hook](https://csharpier.com/docs/Pre-commit). Then you can ensure code was formatted with a [CI/CD tool](https://csharpier.com/docs/ContinuousIntegration).
 

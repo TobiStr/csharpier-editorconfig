@@ -13,12 +13,28 @@ internal static class TryStatement
         docs.Add(AttributeLists.Print(node, node.AttributeLists, context));
         docs.Add(Token.Print(node.TryKeyword, context));
         docs.Add(Block.Print(node.Block, context));
-        docs.Add(node.Catches.Any() ? Doc.HardLine : Doc.Null);
-        docs.Add(Doc.Join(Doc.HardLine, node.Catches.Select(o => CatchClause.Print(o, context))));
+
+        if (node.Catches.Any())
+        {
+            // First catch: controlled by NewLineBeforeCatch, subsequent always on new lines.
+            var firstCatch = node.Catches.First();
+            docs.Add(
+                context.Options.NewLineBeforeCatch ? Doc.HardLine : " ",
+                CatchClause.Print(firstCatch, context)
+            );
+
+            foreach (var remaining in node.Catches.Skip(1))
+            {
+                docs.Add(Doc.HardLine, CatchClause.Print(remaining, context));
+            }
+        }
 
         if (node.Finally != null)
         {
-            docs.Add(Doc.HardLine, FinallyClause.Print(node.Finally, context));
+            docs.Add(
+                context.Options.NewLineBeforeFinally ? Doc.HardLine : " ",
+                FinallyClause.Print(node.Finally, context)
+            );
         }
         return Doc.Concat(ref docs);
     }

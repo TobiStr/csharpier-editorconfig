@@ -30,6 +30,14 @@ internal static class InitializerExpression
                     is SyntaxKind.ArrayInitializerExpression
             );
 
+        if (
+            node.Kind() is SyntaxKind.ObjectInitializerExpression
+            && context.Options.NewLineBeforeMembersInObjectInitializers.HasValue
+        )
+        {
+            alwaysBreak = context.Options.NewLineBeforeMembersInObjectInitializers.Value;
+        }
+
         var result = Doc.Concat(
             separator,
             Token.Print(node.OpenBraceToken, context),

@@ -155,6 +155,18 @@ public static class CSharpFormatter
                     LineEnding = lineEnding,
                     IndentSize = printerOptions.IndentSize,
                     UseTabs = printerOptions.UseTabs,
+                    NewLineBeforeOpenBrace = printerOptions.NewLineBeforeOpenBrace,
+                    NewLineBeforeElse = printerOptions.NewLineBeforeElse,
+                    NewLineBeforeCatch = printerOptions.NewLineBeforeCatch,
+                    NewLineBeforeFinally = printerOptions.NewLineBeforeFinally,
+                    NewLineBeforeMembersInObjectInitializers =
+                        printerOptions.NewLineBeforeMembersInObjectInitializers,
+                    NewLineBeforeMembersInAnonymousTypes =
+                        printerOptions.NewLineBeforeMembersInAnonymousTypes,
+                    NewLineBetweenQueryExpressionClauses =
+                        printerOptions.NewLineBetweenQueryExpressionClauses,
+                    UsePrettierStyleTrailingCommas =
+                        printerOptions.UsePrettierStyleTrailingCommas,
                 },
             };
             var document = Node.Print(rootNode, printingContext);
@@ -181,6 +193,18 @@ public static class CSharpFormatter
                         LineEnding = lineEnding,
                         IndentSize = printerOptions.IndentSize,
                         UseTabs = printerOptions.UseTabs,
+                        NewLineBeforeOpenBrace = printerOptions.NewLineBeforeOpenBrace,
+                        NewLineBeforeElse = printerOptions.NewLineBeforeElse,
+                        NewLineBeforeCatch = printerOptions.NewLineBeforeCatch,
+                        NewLineBeforeFinally = printerOptions.NewLineBeforeFinally,
+                        NewLineBeforeMembersInObjectInitializers =
+                            printerOptions.NewLineBeforeMembersInObjectInitializers,
+                        NewLineBeforeMembersInAnonymousTypes =
+                            printerOptions.NewLineBeforeMembersInAnonymousTypes,
+                        NewLineBetweenQueryExpressionClauses =
+                            printerOptions.NewLineBetweenQueryExpressionClauses,
+                        UsePrettierStyleTrailingCommas =
+                            printerOptions.UsePrettierStyleTrailingCommas,
                     },
                 };
                 document = Node.Print(

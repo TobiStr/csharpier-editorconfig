@@ -31,7 +31,14 @@ internal static class IfStatement
 
         if (node.Else != null)
         {
-            docs.Add(Doc.HardLine, Node.Print(node.Else, context));
+            if (context.Options.NewLineBeforeElse)
+            {
+                docs.Add(Doc.HardLine, Node.Print(node.Else, context));
+            }
+            else
+            {
+                docs.Add(" ", Node.Print(node.Else, context));
+            }
         }
 
         return Doc.Concat(ref docs);

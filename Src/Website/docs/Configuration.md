@@ -2,7 +2,7 @@
 hide_table_of_contents: true
 ---
 
-CSharpier has support for a configuration file. You can use any of the following files
+This fork of [belav/csharpier](https://github.com/belav/csharpier) has support for a configuration file. You can use any of the following files
 - A ```.csharpierrc``` file in JSON or YAML.
 - A ```.csharpierrc.json``` or ```.csharpierrc.yaml``` file.
 - A ```.editorconfig``` file. See [EditorConfig](#editorconfig) section below.
@@ -81,7 +81,7 @@ overrides:
 ```
 
 ### EditorConfig
-CSharpier supports configuration via an `.editorconfig` file. A `.csharpierrc*` file in the same directory will take priority.
+In addition to the upstream behavior, this fork supports extended configuration via an `.editorconfig` file. A `.csharpierrc*` file in the same directory will take priority.
 
 ```ini
 [*.{cs,csx}]
@@ -97,6 +97,20 @@ dotnet_separate_import_directive_groups = false
 indent_style = space
 indent_size = 4
 max_line_length = 100
+csharpier_include_generated = false
+# Optional: control trimming of initial blank lines when formatting
+csharpier_trim_initial_lines = true
+
+# Additional C# formatting options
+# See https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/csharp-formatting-options
+csharp_new_line_before_open_brace = types,methods,control_blocks
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = null
+csharp_new_line_before_members_in_anonymous_types = null
+csharp_new_line_between_query_expression_clauses = true
+csharpier_use_prettier_style_trailing_commas = true
 
 [*.{config,csproj,props,slnx,targets,xaml,xml}]
 indent_style = space

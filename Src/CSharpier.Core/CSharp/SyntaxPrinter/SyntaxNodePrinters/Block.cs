@@ -40,13 +40,40 @@ internal static class Block
             DocUtilities.RemoveInitialDoubleHardLine(innerDoc);
         }
 
-        var result = Doc.Group(
+        Doc leading;
+        if (node.Parent is ParenthesizedLambdaExpressionSyntax or BlockSyntax or GlobalStatementSyntax)
+        {
+            leading = Doc.Null;
+        }
+        else if (node.Parent is BaseMethodDeclarationSyntax)
+        {
+            leading = context.Options.NewLineBeforeOpenBrace.HasFlag(BraceNewLine.Methods)
+                ? Doc.Line
+                : " ";
+        }
+        else if (
             node.Parent
-                is ParenthesizedLambdaExpressionSyntax
-                    or BlockSyntax
-                    or GlobalStatementSyntax
-                ? Doc.Null
-                : Doc.Line,
+            is IfStatementSyntax
+                or ElseClauseSyntax
+                or ForStatementSyntax
+                or ForEachStatementSyntax
+                or WhileStatementSyntax
+                or TryStatementSyntax
+                or CatchClauseSyntax
+                or FinallyClauseSyntax
+        )
+        {
+            leading = context.Options.NewLineBeforeOpenBrace.HasFlag(BraceNewLine.ControlBlocks)
+                ? Doc.Line
+                : " ";
+        }
+        else
+        {
+            leading = Doc.Line;
+        }
+
+        var result = Doc.Group(
+            leading,
             Token.Print(node.OpenBraceToken, context),
             node.Statements.Count == 0 ? " " : Doc.Concat(innerDoc, statementSeparator),
             Token.Print(node.CloseBraceToken, context)

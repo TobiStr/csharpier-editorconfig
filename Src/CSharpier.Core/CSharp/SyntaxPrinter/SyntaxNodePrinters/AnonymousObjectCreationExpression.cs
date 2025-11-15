@@ -7,7 +7,9 @@ internal static class AnonymousObjectCreationExpression
 {
     public static Doc Print(AnonymousObjectCreationExpressionSyntax node, PrintingContext context)
     {
-        var alwaysBreak = node.Initializers.Count >= 3;
+        var alwaysBreak =
+            context.Options.NewLineBeforeMembersInAnonymousTypes
+            ?? (node.Initializers.Count >= 3);
 
         return Doc.Group(
             Token.PrintWithSuffix(node.NewKeyword, Doc.Line, context),
