@@ -34,9 +34,29 @@ internal static class InvocationExpression
             ? GroupPrintedNodesPrettierStyle(printedNodes)
             : GroupPrintedNodesOnLines(printedNodes);
 
+        // Fork (csharpier-editorconfig): csharpier_break_chained_member_access forces one chain
+        // link per line regardless of the print width. GroupPrintedNodesOnLines already produces
+        // exactly that shape, so it is reused instead of adding a third grouping function.
+        var breakChain = false;
+        if (context.Options.BreakChainedMemberAccess)
+        {
+            var perLinkGroups = GroupPrintedNodesOnLines(printedNodes);
+            breakChain =
+                perLinkGroups.Count >= 2
+                && perLinkGroups.Count - 1 >= context.Options.BreakChainedMemberAccessMinimumLinks
+                // a hard line inside an interpolation hole of a non-raw string does not compile
+                && !node.HasParent(typeof(InterpolatedStringExpressionSyntax));
+            if (breakChain)
+            {
+                groups = perLinkGroups;
+            }
+        }
+
         var oneLine = SelectManyDocsToArray(groups);
 
-        var shouldMergeFirstTwoGroups = ShouldMergeFirstTwoGroups(groups, parent);
+        var shouldMergeFirstTwoGroups = breakChain
+            ? IsStatementChain(parent)
+            : ShouldMergeFirstTwoGroups(groups, parent);
 
         var cutoff = shouldMergeFirstTwoGroups ? 3 : 2;
 
@@ -87,7 +107,7 @@ internal static class InvocationExpression
                         && literalExpressionSyntax.Token.Text.Contains('\n')
                 );
 
-        if (forceOneLine)
+        if (!breakChain && forceOneLine)
         {
             return Doc.Group(oneLine);
         }
@@ -104,7 +124,8 @@ internal static class InvocationExpression
         );
 
         return
-            oneLine.Skip(1).Any(DocUtilities.ContainsBreak)
+            breakChain
+            || oneLine.Skip(1).Any(DocUtilities.ContainsBreak)
             || groups[0]
                 .Any(o =>
                     o.Node
@@ -123,6 +144,62 @@ internal static class InvocationExpression
             || groups.Count == 1
             ? expanded
             : Doc.ConditionalGroup(Doc.Concat(oneLine), expanded);
+    }
+
+    // Fork (csharpier-editorconfig): true when csharpier_break_chained_member_access will force
+    // this expression onto several lines, so callers such as ArrowExpressionClause can lay out
+    // the operator accordingly. Counting links here mirrors GroupPrintedNodesOnLines without
+    // printing anything - PrintMemberChain cannot be reused for the check because flattening a
+    // chain prints every node and would both duplicate that work and disturb context.State.
+    internal static bool WillBreakChain(ExpressionSyntax expression, CSharpPrintingContext context)
+    {
+        return context.Options.BreakChainedMemberAccess
+            && CountChainLinks(expression)
+                >= Math.Max(context.Options.BreakChainedMemberAccessMinimumLinks, 1)
+            // a hard line inside an interpolation hole of a non-raw string does not compile
+            && !expression.HasParent(typeof(InterpolatedStringExpressionSyntax));
+    }
+
+    // The number of '.' / '?.' accesses on the chain's spine, which is what
+    // GroupPrintedNodesOnLines turns into one group each after the root.
+    private static int CountChainLinks(ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            InvocationExpressionSyntax invocation => CountChainLinks(invocation.Expression),
+            ElementAccessExpressionSyntax elementAccess => CountChainLinks(
+                elementAccess.Expression
+            ),
+            PostfixUnaryExpressionSyntax
+            {
+                Operand: InvocationExpressionSyntax or MemberAccessExpressionSyntax
+            } postfixUnary => CountChainLinks(postfixUnary.Operand),
+            MemberAccessExpressionSyntax memberAccess => CountChainLinks(memberAccess.Expression)
+                + 1,
+            ConditionalAccessExpressionSyntax conditionalAccess => CountChainLinks(
+                conditionalAccess.Expression
+            ) + CountChainLinks(conditionalAccess.WhenNotNull),
+            MemberBindingExpressionSyntax or ElementBindingExpressionSyntax => 1,
+            _ => 0,
+        };
+    }
+
+    // Fork (csharpier-editorconfig): prints a chain that follows an operator such as "=>" while
+    // keeping its root on the operator's line. A broken chain contains a hard line, which would
+    // otherwise propagate to the enclosing group and push the whole chain onto the next line.
+    // Giving the line its own group stops that propagation, and the group still breaks when the
+    // body genuinely does not fit - the same shape RightHandSide's fluid layout gives an "=".
+    internal static Doc PrintChainAfterOperator(
+        ExpressionSyntax expression,
+        CSharpPrintingContext context
+    )
+    {
+        var groupId = context.GroupFor("ChainAfterOperator");
+
+        return Doc.Concat(
+            Doc.GroupWithId(groupId, Doc.Indent(Doc.Line)),
+            Doc.IndentIfBreak(Node.Print(expression, context), groupId)
+        );
     }
 
     private static void FlattenAndPrintNodes(
@@ -430,6 +507,20 @@ internal static class InvocationExpression
         }
 
         return Doc.Indent(Doc.Group(result.ToArray()));
+    }
+
+    // Fork (csharpier-editorconfig): a chain that forms a statement - an expression statement,
+    // an if/while/foreach/switch condition, a return - keeps its first link on the root line.
+    // A chain whose value is assigned or passed on has an expression node as its parent and
+    // starts every link on its own line, so the '=' stays readable. An expression bodied member
+    // is handled in ArrowExpressionClause instead: the root stays on the "=>" line.
+    private static bool IsStatementChain(SyntaxNode? parent)
+    {
+        return parent is StatementSyntax
+            || (
+                parent is AwaitExpressionSyntax awaitExpression
+                && IsStatementChain(awaitExpression.Parent)
+            );
     }
 
     // There are cases where merging the first two groups looks better

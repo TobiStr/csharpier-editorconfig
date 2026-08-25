@@ -41,6 +41,15 @@ internal static class ParenthesizedLambdaExpression
             );
         }
 
+        // Fork (csharpier-editorconfig): keep the root of a broken chain on the "=>" line.
+        if (
+            node.Body is ExpressionSyntax bodyExpression
+            && InvocationExpression.WillBreakChain(bodyExpression, context)
+        )
+        {
+            return Doc.Group(InvocationExpression.PrintChainAfterOperator(bodyExpression, context));
+        }
+
         var body = Node.Print(node.Body, context);
 
         if (

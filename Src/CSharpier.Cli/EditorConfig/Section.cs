@@ -28,6 +28,10 @@ internal class Section(SectionData section, string directory)
         section.Keys["csharp_new_line_between_query_expression_clauses"];
     public string? UsePrettierStyleTrailingCommas { get; } =
         section.Keys["csharpier_use_prettier_style_trailing_commas"];
+    public string? BreakChainedMemberAccess { get; } =
+        section.Keys["csharpier_break_chained_member_access"];
+    public string? BreakChainedMemberAccessMinimumLinks { get; } =
+        section.Keys["csharpier_break_chained_member_access_minimum_links"];
     public string? IncludeGenerated { get; } = section.Keys["csharpier_include_generated"];
     public string? TrimInitialLines { get; } = section.Keys["csharpier_trim_initial_lines"];
 

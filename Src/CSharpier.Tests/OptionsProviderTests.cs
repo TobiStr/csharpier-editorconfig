@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Abstractions.TestingHelpers;
 using AwesomeAssertions;
 using CSharpier.Cli.Options;
@@ -860,6 +861,112 @@ csharpier_use_prettier_style_trailing_commas = "
 
         var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.UsePrettierStyleTrailingCommas.Should().Be(value);
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task Should_Support_EditorConfig_BreakChainedMemberAccess(bool value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.editorconfig",
+            @"
+[*]
+csharpier_break_chained_member_access = "
+                + value.ToString().ToLowerInvariant()
+                + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.BreakChainedMemberAccess.Should().Be(value);
+    }
+
+    [Test]
+    [Arguments(1)]
+    [Arguments(3)]
+    public async Task Should_Support_EditorConfig_BreakChainedMemberAccessMinimumLinks(int value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.editorconfig",
+            @"
+[*]
+csharpier_break_chained_member_access_minimum_links = "
+                + value.ToString(CultureInfo.InvariantCulture)
+                + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.BreakChainedMemberAccessMinimumLinks.Should().Be(value);
+    }
+
+    [Test]
+    public async Task Should_Support_Invalid_EditorConfig_BreakChainedMemberAccessMinimumLinks()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.editorconfig",
+            """
+            [*]
+            csharpier_break_chained_member_access_minimum_links = 0
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.BreakChainedMemberAccessMinimumLinks.Should().Be(2);
+    }
+
+    [Test]
+    [Arguments(".csharpierrc")]
+    [Arguments(".csharpierrc.json")]
+    public async Task Should_Support_Json_BreakChainedMemberAccess(string fileName)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            $"./{fileName}",
+            """
+            { "breakChainedMemberAccess": true, "breakChainedMemberAccessMinimumLinks": 3 }
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.BreakChainedMemberAccess.Should().BeTrue();
+        result.BreakChainedMemberAccessMinimumLinks.Should().Be(3);
+    }
+
+    [Test]
+    public async Task Should_Ignore_Invalid_Json_BreakChainedMemberAccessMinimumLinks()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.csharpierrc",
+            """
+            { "breakChainedMemberAccess": true, "breakChainedMemberAccessMinimumLinks": 0 }
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.BreakChainedMemberAccessMinimumLinks.Should().Be(2);
+    }
+
+    [Test]
+    public async Task Should_Support_Yaml_BreakChainedMemberAccess()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.csharpierrc.yaml",
+            """
+            breakChainedMemberAccess: true
+            breakChainedMemberAccessMinimumLinks: 3
+            """
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.BreakChainedMemberAccess.Should().BeTrue();
+        result.BreakChainedMemberAccessMinimumLinks.Should().Be(3);
     }
 
     [Test]

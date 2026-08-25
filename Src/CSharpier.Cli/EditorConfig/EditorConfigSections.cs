@@ -114,6 +114,20 @@ internal class EditorConfigSections
             printerOptions.UsePrettierStyleTrailingCommas = usePrettierStyleTrailingCommas;
         }
 
+        if (resolvedConfiguration.BreakChainedMemberAccess is { } breakChainedMemberAccess)
+        {
+            printerOptions.BreakChainedMemberAccess = breakChainedMemberAccess;
+        }
+
+        if (
+            resolvedConfiguration.BreakChainedMemberAccessMinimumLinks is
+            { } breakChainedMemberAccessMinimumLinks
+        )
+        {
+            printerOptions.BreakChainedMemberAccessMinimumLinks =
+                breakChainedMemberAccessMinimumLinks;
+        }
+
         if (resolvedConfiguration.IncludeGenerated is { } includeGenerated)
         {
             printerOptions.IncludeGenerated = includeGenerated;
@@ -144,6 +158,8 @@ internal class EditorConfigSections
         public bool? NewLineBeforeMembersInAnonymousTypes { get; }
         public bool? NewLineBetweenQueryExpressionClauses { get; }
         public bool? UsePrettierStyleTrailingCommas { get; }
+        public bool? BreakChainedMemberAccess { get; }
+        public int? BreakChainedMemberAccessMinimumLinks { get; }
         public bool? IncludeGenerated { get; }
         public bool? TrimInitialLines { get; }
 
@@ -311,6 +327,29 @@ internal class EditorConfigSections
             )
             {
                 this.UsePrettierStyleTrailingCommas = usePrettierStyleTrailingCommasValue;
+            }
+
+            var breakChainedMemberAccess = sections
+                .LastOrDefault(o => o.BreakChainedMemberAccess != null)
+                ?.BreakChainedMemberAccess;
+            if (bool.TryParse(breakChainedMemberAccess, out var breakChainedMemberAccessValue))
+            {
+                this.BreakChainedMemberAccess = breakChainedMemberAccessValue;
+            }
+
+            var breakChainedMemberAccessMinimumLinks = sections
+                .LastOrDefault(o => o.BreakChainedMemberAccessMinimumLinks != null)
+                ?.BreakChainedMemberAccessMinimumLinks;
+            if (
+                int.TryParse(
+                    breakChainedMemberAccessMinimumLinks,
+                    out var breakChainedMemberAccessMinimumLinksValue
+                )
+                && breakChainedMemberAccessMinimumLinksValue >= 1
+            )
+            {
+                this.BreakChainedMemberAccessMinimumLinks =
+                    breakChainedMemberAccessMinimumLinksValue;
             }
         }
     }

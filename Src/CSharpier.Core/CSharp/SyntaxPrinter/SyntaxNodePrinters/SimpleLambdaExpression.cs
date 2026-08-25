@@ -29,6 +29,10 @@ internal static class SimpleLambdaExpression
                 " ",
                 Node.Print(node.Body, context)
             ),
+            // Fork (csharpier-editorconfig): keep the root of a broken chain on the "=>" line.
+            ExpressionSyntax bodyExpression
+                when InvocationExpression.WillBreakChain(bodyExpression, context) =>
+                InvocationExpression.PrintChainAfterOperator(bodyExpression, context),
             _ => Doc.Indent(Doc.Line, Node.Print(node.Body, context)),
         };
     }
