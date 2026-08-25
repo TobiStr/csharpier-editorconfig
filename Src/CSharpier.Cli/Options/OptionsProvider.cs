@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Text.Json;
+using CSharpier.Cli.DotIgnore;
 using CSharpier.Cli.EditorConfig;
 using CSharpier.Core;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ internal class OptionsProvider
         string,
         CSharpierConfigData?
     > csharpierConfigsByDirectory = new();
+    private readonly ConcurrentDictionary<string, IgnoreList> ignoreWithPathCache = new();
     private readonly ConcurrentDictionary<string, IgnoreFile?> ignoreFilesByDirectory = new();
     private readonly ConfigurationFileOptions? specifiedConfigFile;
     private readonly EditorConfigSections? specifiedEditorConfig;
@@ -60,22 +62,16 @@ internal class OptionsProvider
             directoryName,
             fileSystem,
             ignorePath,
+            null,
             cancellationToken
         );
 
-#pragma warning disable IDE0270
-        if (ignoreFile is null)
-        {
-            // should never happen
-            throw new Exception("Unable to locate an IgnoreFile for " + directoryName);
-        }
-#pragma warning restore IDE0270
+        ignoreFile ??= IgnoreFile.NullIgnore;
 
         var specifiedEditorConfig = editorConfigPath is not null
             ? await EditorConfigLocator.FindForDirectoryNameAsync(
                 Path.GetDirectoryName(editorConfigPath)!,
                 fileSystem,
-                ignoreFile,
                 cancellationToken
             )
             : null;
@@ -101,7 +97,6 @@ internal class OptionsProvider
                 await EditorConfigLocator.FindForDirectoryNameAsync(
                     directoryName,
                     fileSystem,
-                    ignoreFile,
                     cancellationToken
                 );
         }
@@ -144,7 +139,9 @@ internal class OptionsProvider
         }
 
         var formatter = PrinterOptions.GetFormatter(filePath);
-        return formatter != Formatter.Unknown ? new PrinterOptions(formatter) : null;
+        return formatter != Formatter.Unknown
+            ? new PrinterOptions(formatter, PrinterOptions.GetXmlWhitespaceSensitivity(filePath))
+            : null;
     }
 
     private Task<CSharpierConfigData?> FindCSharpierConfigAsync(string directoryName)
@@ -180,11 +177,10 @@ internal class OptionsProvider
             this.editorConfigByDirectory,
             searchingDirectory =>
                 this.fileSystem.File.Exists(Path.Combine(searchingDirectory, ".editorconfig")),
-            async searchingDirectory =>
-                await EditorConfigLocator.FindForDirectoryNameAsync(
+            searchingDirectory =>
+                EditorConfigLocator.FindForDirectoryNameAsync(
                     searchingDirectory,
                     this.fileSystem,
-                    await this.FindIgnoreFileAsync(searchingDirectory, cancellationToken),
                     cancellationToken
                 )
         );
@@ -204,18 +200,16 @@ internal class OptionsProvider
                     Path.Combine(searchingDirectory, ".csharpierignore")
                 ),
             (searchingDirectory) =>
-                IgnoreFile.CreateAsync(searchingDirectory, this.fileSystem, null, cancellationToken)
+                IgnoreFile.CreateAsync(
+                    searchingDirectory,
+                    this.fileSystem,
+                    null,
+                    ignoreWithPathCache,
+                    cancellationToken
+                )
         );
 
-#pragma warning disable IDE0270
-        if (ignoreFile is null)
-        {
-            // should never happen
-            throw new Exception("Unable to locate an IgnoreFile for " + directoryName);
-        }
-#pragma warning restore IDE0270
-
-        return ignoreFile;
+        return ignoreFile ?? IgnoreFile.NullIgnore;
     }
 
     /// <summary>
@@ -242,7 +236,10 @@ internal class OptionsProvider
             && !dictionary.TryGetValue(searchingDirectory.FullName, out result)
         )
         {
-            if (shouldConsiderDirectory(searchingDirectory.FullName))
+            if (
+                this.fileSystem.Directory.Exists(searchingDirectory.FullName)
+                && shouldConsiderDirectory(searchingDirectory.FullName)
+            )
             {
                 dictionary[searchingDirectory.FullName] = result = await createFileAsync(
                     searchingDirectory.FullName
@@ -262,17 +259,25 @@ internal class OptionsProvider
         return result;
     }
 
-    public async Task<bool> IsIgnoredAsync(
-        string actualFilePath,
+    public Task<bool> IsFileIgnoredAsync(string filePath, CancellationToken cancellationToken)
+    {
+        return this.IsIgnoredAsync(filePath, false, cancellationToken);
+    }
+
+    public Task<bool> IsDirectoryIgnoredAsync(string filePath, CancellationToken cancellationToken)
+    {
+        return this.IsIgnoredAsync(filePath, true, cancellationToken);
+    }
+
+    private async Task<bool> IsIgnoredAsync(
+        string path,
+        bool isDirectory,
         CancellationToken cancellationToken
     )
     {
         return (
-            await this.FindIgnoreFileAsync(
-                Path.GetDirectoryName(actualFilePath)!,
-                cancellationToken
-            )
-        ).IsIgnored(actualFilePath);
+            await this.FindIgnoreFileAsync(Path.GetDirectoryName(path)!, cancellationToken)
+        ).IsIgnored(path, isDirectory);
     }
 
     public string Serialize()

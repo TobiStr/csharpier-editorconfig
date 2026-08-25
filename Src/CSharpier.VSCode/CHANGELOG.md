@@ -1,3 +1,20 @@
+## 11.0.0
+This release drops support for two features added by outside contributors which I have no interest in continuing to support. 
+- Drop support for diagnostics
+- Drop support for formatting selection
+
+## 10.0.3
+- Only show csharpier diagnostics if csharpier is configured as the formatter
+
+## 10.0.2
+- Include source maps in published extension
+
+## 10.0.1
+- Disable Q&A. Please use GitHub
+
+## 10.0.0
+- Make version a number that won't conflict with CSharpier itself.
+
 ## 2.1.0
 - Improved support for users that work with multiple dotnet architectures by splitting out installs of csharpier based on the architecture they were installed with.
 - Improve formatting of documents to avoid scroll jumping around

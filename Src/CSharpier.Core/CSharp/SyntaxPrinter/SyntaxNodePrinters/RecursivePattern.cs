@@ -6,19 +6,23 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class RecursivePattern
 {
-    public static Doc PrintWithOutType(RecursivePatternSyntax node, PrintingContext context)
+    public static Doc PrintWithOutType(RecursivePatternSyntax node, CSharpPrintingContext context)
     {
         return Print(node, false, context);
     }
 
-    public static Doc Print(RecursivePatternSyntax node, PrintingContext context)
+    public static Doc Print(RecursivePatternSyntax node, CSharpPrintingContext context)
     {
         return Print(node, true, context);
     }
 
-    private static Doc Print(RecursivePatternSyntax node, bool includeType, PrintingContext context)
+    private static Doc Print(
+        RecursivePatternSyntax node,
+        bool includeType,
+        CSharpPrintingContext context
+    )
     {
-        var result = new ValueListBuilder<Doc>([null, null, null, null, null, null, null]);
+        var result = new DocListBuilder(8);
         if (node.Type != null && includeType)
         {
             result.Add(Node.Print(node.Type, context));
@@ -65,46 +69,34 @@ internal static class RecursivePattern
 
         if (node.PropertyPatternClause != null)
         {
-            if (!node.PropertyPatternClause.Subpatterns.Any())
-            {
-                if (node.Type != null)
-                {
-                    result.Add(" ");
-                }
-                result.Add("{ }");
-            }
-            else
-            {
-                result.Add(
-                    Doc.Group(
-                        node.Type != null
-                        && !Enumerable.Any(
-                            node.PropertyPatternClause.OpenBraceToken.LeadingTrivia,
-                            o => o.IsDirective || o.IsComment()
-                        )
-                            ? Doc.Line
-                            : Doc.Null,
-                        Token.Print(node.PropertyPatternClause.OpenBraceToken, context),
-                        Doc.Indent(
-                            node.PropertyPatternClause.Subpatterns.Any() ? Doc.Line : Doc.Null,
-                            SeparatedSyntaxList.Print(
-                                node.PropertyPatternClause.Subpatterns,
-                                (subpatternNode, _) =>
-                                    Doc.Group(
-                                        subpatternNode.ExpressionColon != null
-                                            ? Node.Print(subpatternNode.ExpressionColon, context)
-                                            : Doc.Null,
-                                        Node.Print(subpatternNode.Pattern, context)
-                                    ),
-                                Doc.Line,
-                                context
-                            )
-                        ),
-                        Doc.Line,
-                        Token.Print(node.PropertyPatternClause.CloseBraceToken, context)
+            result.Add(
+                Doc.Group(
+                    node.Type != null
+                    && !node.PropertyPatternClause.OpenBraceToken.LeadingTrivia.Any(o =>
+                        o.IsDirective || o.IsComment()
                     )
-                );
-            }
+                        ? Doc.Line
+                        : Doc.Null,
+                    Token.Print(node.PropertyPatternClause.OpenBraceToken, context),
+                    Doc.Indent(
+                        node.PropertyPatternClause.Subpatterns.Any() ? Doc.Line : Doc.Null,
+                        SeparatedSyntaxList.Print(
+                            node.PropertyPatternClause.Subpatterns,
+                            (subpatternNode, _) =>
+                                Doc.Group(
+                                    subpatternNode.ExpressionColon != null
+                                        ? Node.Print(subpatternNode.ExpressionColon, context)
+                                        : Doc.Null,
+                                    Node.Print(subpatternNode.Pattern, context)
+                                ),
+                            Doc.Line,
+                            context
+                        )
+                    ),
+                    Doc.Line,
+                    Token.Print(node.PropertyPatternClause.CloseBraceToken, context)
+                )
+            );
         }
 
         if (node.Designation != null)

@@ -2,6 +2,10 @@
 indent_size = 2
 indent_style = space
 
+[*.vsct]
+csharpier_formatter = xml
+
+[*.{cs,vb}]
 csharp_using_directive_placement = outside_namespace
 csharp_style_inlined_variable_declaration = true
 csharp_style_pattern_matching_over_is_with_cast_check = true
@@ -9,20 +13,6 @@ csharp_style_var_elsewhere = true
 csharp_style_var_for_built_in_types = true
 csharp_style_var_when_type_is_apparent = true
 
-[*.vsct]
-csharpier_formatter = xml
-
-#  CSharp formatting rules:
-[*.cs]
-csharp_new_line_before_open_brace = properties, types
-csharp_new_line_before_else = false
-csharp_new_line_before_catch = false
-csharp_new_line_before_finally = false
-csharp_new_line_before_members_in_object_initializers = true
-csharp_new_line_before_members_in_anonymous_types = true
-csharp_new_line_between_query_expression_clauses = true
-
-[*.{cs,vb}]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1848.severity = none
 dotnet_diagnostic.CA2201.severity = none
@@ -76,4 +66,16 @@ dotnet_diagnostic.SYSLIB1045.severity = warning
 
 dotnet_diagnostic.CA1873.severity = none
 
+# Fork (csharpier-editorconfig): extended CSharpier formatting options
+[*.cs]
+csharp_new_line_before_open_brace = properties, types
+csharp_new_line_before_else = false
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
 
+# Source generator output: keep IDE style rules (incl. the brace settings above) away from it
+[**/obj/**.cs]
+generated_code = true

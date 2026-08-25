@@ -9,17 +9,23 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter;
 
 internal static class Token
 {
-    public static Doc PrintWithoutLeadingTrivia(SyntaxToken syntaxToken, PrintingContext context)
+    public static Doc PrintWithoutLeadingTrivia(
+        SyntaxToken syntaxToken,
+        CSharpPrintingContext context
+    )
     {
         return PrintSyntaxToken(syntaxToken, context, skipLeadingTrivia: true);
     }
 
-    public static Doc PrintWithoutTrailingTrivia(SyntaxToken syntaxToken, PrintingContext context)
+    public static Doc PrintWithoutTrailingTrivia(
+        SyntaxToken syntaxToken,
+        CSharpPrintingContext context
+    )
     {
         return PrintSyntaxToken(syntaxToken, context, skipTrailingTrivia: true);
     }
 
-    public static Doc Print(SyntaxToken syntaxToken, PrintingContext context)
+    public static Doc Print(SyntaxToken syntaxToken, CSharpPrintingContext context)
     {
         return PrintSyntaxToken(syntaxToken, context);
     }
@@ -27,7 +33,7 @@ internal static class Token
     public static Doc PrintWithSuffix(
         SyntaxToken syntaxToken,
         Doc suffixDoc,
-        PrintingContext context,
+        CSharpPrintingContext context,
         bool skipLeadingTrivia = false
     )
     {
@@ -38,7 +44,7 @@ internal static class Token
 
     private static Doc PrintSyntaxToken(
         SyntaxToken syntaxToken,
-        PrintingContext context,
+        CSharpPrintingContext context,
         Doc? suffixDoc = null,
         bool skipLeadingTrivia = false,
         bool skipTrailingTrivia = false
@@ -49,7 +55,7 @@ internal static class Token
             return Doc.Null;
         }
 
-        var docs = new ValueListBuilder<Doc>([null, null, null, null, null, null, null, null]);
+        var docs = new DocListBuilder(8);
 
         if (!skipLeadingTrivia)
         {
@@ -107,9 +113,17 @@ internal static class Token
 
             contents.Add(linesIncludingQuotes[^1].TrimStart());
 
-            var hasArgumentParent = syntaxToken.Parent.HasParent(typeof(ArgumentSyntax));
+            var argument = syntaxToken.Parent.FindParent<ArgumentSyntax>();
 
-            docs.Add(Doc.IndentIf(!hasArgumentParent, Doc.Concat(contents)));
+            docs.Add(
+                Doc.IndentIf(
+                    argument is null
+                        || argument.Expression
+                            is ParenthesizedLambdaExpressionSyntax
+                                or SimpleLambdaExpressionSyntax,
+                    Doc.Concat(contents)
+                )
+            );
         }
         else if (
             syntaxToken.RawSyntaxKind()
@@ -131,7 +145,7 @@ internal static class Token
             {
                 if (
                     context.State.TrailingComma is not null
-                    && Enumerable.FirstOrDefault(syntaxToken.TrailingTrivia, o => o.IsComment())
+                    && syntaxToken.TrailingTrivia.FirstOrDefault(o => o.IsComment())
                         == context.State.TrailingComma.TrailingComment
                 )
                 {
@@ -155,7 +169,7 @@ internal static class Token
         return returnDoc;
     }
 
-    public static Doc PrintLeadingTrivia(SyntaxToken syntaxToken, PrintingContext context)
+    public static Doc PrintLeadingTrivia(SyntaxToken syntaxToken, CSharpPrintingContext context)
     {
         if (context.State.SkipNextLeadingTrivia)
         {
@@ -174,7 +188,8 @@ internal static class Token
             skipLastHardline: isClosingBrace
         );
 
-        var hasDirective = Enumerable.Any(syntaxToken.LeadingTrivia, o => o.IsDirective);
+        var leadingTrivia = syntaxToken.LeadingTrivia;
+        var hasDirective = leadingTrivia.Any(o => o.IsDirective);
 
         if (hasDirective)
         {
@@ -198,7 +213,7 @@ internal static class Token
 
         Doc extraNewLines = Doc.Null;
 
-        if (hasDirective || Enumerable.Any(syntaxToken.LeadingTrivia, o => o.IsComment()))
+        if (hasDirective || leadingTrivia.Any(o => o.IsComment()))
         {
             extraNewLines = ExtraNewLines.Print(syntaxToken.LeadingTrivia);
         }
@@ -212,14 +227,17 @@ internal static class Token
             : printedTrivia;
     }
 
-    public static Doc PrintLeadingTrivia(SyntaxTriviaList leadingTrivia, PrintingContext context)
+    public static Doc PrintLeadingTrivia(
+        SyntaxTriviaList leadingTrivia,
+        CSharpPrintingContext context
+    )
     {
         return PrivatePrintLeadingTrivia(leadingTrivia, context);
     }
 
     public static Doc PrintLeadingTriviaWithNewLines(
         SyntaxTriviaList leadingTrivia,
-        PrintingContext context
+        CSharpPrintingContext context
     )
     {
         return PrivatePrintLeadingTrivia(leadingTrivia, context, includeInitialNewLines: true);
@@ -227,7 +245,7 @@ internal static class Token
 
     private static Doc PrivatePrintLeadingTrivia(
         SyntaxTriviaList leadingTrivia,
-        PrintingContext context,
+        CSharpPrintingContext context,
         bool includeInitialNewLines = false,
         bool skipLastHardline = false
     )
@@ -351,12 +369,7 @@ internal static class Token
 
         if (context.State.NextTriviaNeedsLine)
         {
-            if (
-                Enumerable.Any(
-                    leadingTrivia,
-                    o => o.RawSyntaxKind() is SyntaxKind.IfDirectiveTrivia
-                )
-            )
+            if (leadingTrivia.Any(o => o.RawSyntaxKind() is SyntaxKind.IfDirectiveTrivia))
             {
                 docs.Insert(0, Doc.HardLineSkipBreakIfFirstInGroup);
             }
@@ -409,7 +422,7 @@ internal static class Token
             return Doc.Null;
         }
 
-        var docs = new ValueListBuilder<Doc>([null, null, null, null, null, null, null, null]);
+        var docs = new DocListBuilder(8);
         foreach (var trivia in trailingTrivia)
         {
             if (trivia.RawSyntaxKind() == SyntaxKind.SingleLineCommentTrivia)
@@ -430,17 +443,11 @@ internal static class Token
 
     public static bool HasComments(SyntaxToken syntaxToken)
     {
-        return Enumerable.Any(
-                syntaxToken.LeadingTrivia,
-                o =>
-                    o.RawSyntaxKind()
-                        is not (SyntaxKind.WhitespaceTrivia or SyntaxKind.EndOfLineTrivia)
+        return syntaxToken.LeadingTrivia.Any(o =>
+                o.RawSyntaxKind() is not (SyntaxKind.WhitespaceTrivia or SyntaxKind.EndOfLineTrivia)
             )
-            || Enumerable.Any(
-                syntaxToken.TrailingTrivia,
-                o =>
-                    o.RawSyntaxKind()
-                        is not (SyntaxKind.WhitespaceTrivia or SyntaxKind.EndOfLineTrivia)
+            || syntaxToken.TrailingTrivia.Any(o =>
+                o.RawSyntaxKind() is not (SyntaxKind.WhitespaceTrivia or SyntaxKind.EndOfLineTrivia)
             );
     }
 
@@ -463,11 +470,8 @@ internal static class Token
 
     public static bool HasLeadingCommentMatching(SyntaxToken token, Regex regex)
     {
-        return Enumerable.Any(
-            token.LeadingTrivia,
-            o =>
-                o.RawSyntaxKind() is SyntaxKind.SingleLineCommentTrivia
-                && regex.IsMatch(o.ToString())
+        return token.LeadingTrivia.Any(o =>
+            o.RawSyntaxKind() is SyntaxKind.SingleLineCommentTrivia && regex.IsMatch(o.ToString())
         );
     }
 }

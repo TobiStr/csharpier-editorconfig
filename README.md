@@ -19,7 +19,7 @@ See `docs/Configuration.md` for details.
 ### Quick Start
 (Optional) Install the original CSharpier globally using the following command.
 ```bash
-dotnet tool install csharpier -g
+dotnet tool install -g csharpier
 ```
 Install the Visual Studio or Visual Studio Code Extension and configure it to override the default CSharpier Executable with the executable built with this repo, or simply replace the executable in `\AppData\Local\CSharpier` folder.
 

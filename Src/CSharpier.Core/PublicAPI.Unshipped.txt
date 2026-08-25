@@ -1,1 +1,28 @@
-﻿
+﻿CSharpier.Core.CodeFormatterOptions.XmlWhitespaceSensitivity.get -> CSharpier.Core.XmlWhitespaceSensitivity
+CSharpier.Core.CodeFormatterOptions.XmlWhitespaceSensitivity.init -> void
+CSharpier.Core.XmlWhitespaceSensitivity
+CSharpier.Core.XmlWhitespaceSensitivity.Ignore = 1 -> CSharpier.Core.XmlWhitespaceSensitivity
+CSharpier.Core.XmlWhitespaceSensitivity.Strict = 0 -> CSharpier.Core.XmlWhitespaceSensitivity
+
+CSharpier.Core.BraceNewLine
+CSharpier.Core.BraceNewLine.All = 65535 -> CSharpier.Core.BraceNewLine
+CSharpier.Core.BraceNewLine.ControlBlocks = 4 -> CSharpier.Core.BraceNewLine
+CSharpier.Core.BraceNewLine.Methods = 2 -> CSharpier.Core.BraceNewLine
+CSharpier.Core.BraceNewLine.None = 0 -> CSharpier.Core.BraceNewLine
+CSharpier.Core.BraceNewLine.Types = 1 -> CSharpier.Core.BraceNewLine
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeOpenBrace.get -> CSharpier.Core.BraceNewLine
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeOpenBrace.init -> void
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeElse.get -> bool
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeElse.init -> void
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeCatch.get -> bool
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeCatch.init -> void
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeFinally.get -> bool
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeFinally.init -> void
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeMembersInObjectInitializers.get -> bool?
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeMembersInObjectInitializers.init -> void
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeMembersInAnonymousTypes.get -> bool?
+CSharpier.Core.CodeFormatterOptions.NewLineBeforeMembersInAnonymousTypes.init -> void
+CSharpier.Core.CodeFormatterOptions.NewLineBetweenQueryExpressionClauses.get -> bool?
+CSharpier.Core.CodeFormatterOptions.NewLineBetweenQueryExpressionClauses.init -> void
+CSharpier.Core.CodeFormatterOptions.UsePrettierStyleTrailingCommas.get -> bool
+CSharpier.Core.CodeFormatterOptions.UsePrettierStyleTrailingCommas.init -> void

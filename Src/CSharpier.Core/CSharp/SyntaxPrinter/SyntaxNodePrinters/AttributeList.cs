@@ -6,14 +6,14 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class AttributeList
 {
-    public static Doc Print(AttributeListSyntax node, PrintingContext context)
+    public static Doc Print(AttributeListSyntax node, CSharpPrintingContext context)
     {
         if (node.Parent is BaseMethodDeclarationSyntax && CSharpierIgnore.HasIgnoreComment(node))
         {
             return CSharpierIgnore.PrintWithoutFormatting(node, context).Trim();
         }
 
-        var docs = new ValueListBuilder<Doc>([null, null, null, null, null, null, null]);
+        var docs = new DocListBuilder(8);
         if (
             node.Parent is CompilationUnitSyntax compilationUnitSyntax
             && compilationUnitSyntax.AttributeLists.First() != node

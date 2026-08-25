@@ -8,7 +8,7 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class BaseTypeDeclaration
 {
-    public static Doc Print(BaseTypeDeclarationSyntax node, PrintingContext context)
+    public static Doc Print(BaseTypeDeclarationSyntax node, CSharpPrintingContext context)
     {
         ParameterListSyntax? parameterList = null;
         TypeParameterListSyntax? typeParameterList = null;
@@ -48,13 +48,20 @@ internal static class BaseTypeDeclaration
             {
                 keyword = interfaceDeclarationSyntax.Keyword;
             }
+#pragma warning disable RSEXPERIMENTAL006
+            else if (node is UnionDeclarationSyntax unionDeclarationSyntax)
+#pragma warning restore RSEXPERIMENTAL006
+            {
+                keyword = unionDeclarationSyntax.Keyword;
+                parameterList = unionDeclarationSyntax.ParameterList;
+            }
             else if (node is RecordDeclarationSyntax recordDeclarationSyntax)
             {
                 recordKeyword = recordDeclarationSyntax.Keyword;
                 keyword = recordDeclarationSyntax.ClassOrStructKeyword;
                 parameterList = recordDeclarationSyntax.ParameterList;
             }
-            else if (node is ExtensionDeclarationSyntax extensionDeclarationSyntax)
+            else if (node is ExtensionBlockDeclarationSyntax extensionDeclarationSyntax)
             {
                 keyword = extensionDeclarationSyntax.Keyword;
                 parameterList = extensionDeclarationSyntax.ParameterList;
@@ -98,7 +105,7 @@ internal static class BaseTypeDeclaration
 
         if (keyword != null)
         {
-            if (node is ExtensionDeclarationSyntax)
+            if (node is ExtensionBlockDeclarationSyntax)
             {
                 docs.Add(Token.Print(keyword.Value, context));
             }

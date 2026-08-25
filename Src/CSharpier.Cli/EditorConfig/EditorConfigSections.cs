@@ -26,7 +26,10 @@ internal class EditorConfigSections
             return null;
         }
 
-        var printerOptions = new PrinterOptions(parsedFormatter)
+        var printerOptions = new PrinterOptions(
+            parsedFormatter,
+            PrinterOptions.GetXmlWhitespaceSensitivity(filePath)
+        )
         {
             TrimInitialLines = resolvedConfiguration.TrimInitialLines ?? true,
         };
@@ -77,8 +80,8 @@ internal class EditorConfigSections
         }
 
         if (
-            resolvedConfiguration.NewLineBeforeMembersInObjectInitializers
-            is { } newLineBeforeMembersInObjectInitializers
+            resolvedConfiguration.NewLineBeforeMembersInObjectInitializers is
+            { } newLineBeforeMembersInObjectInitializers
         )
         {
             printerOptions.NewLineBeforeMembersInObjectInitializers =
@@ -86,8 +89,8 @@ internal class EditorConfigSections
         }
 
         if (
-            resolvedConfiguration.NewLineBeforeMembersInAnonymousTypes
-            is { } newLineBeforeMembersInAnonymousTypes
+            resolvedConfiguration.NewLineBeforeMembersInAnonymousTypes is
+            { } newLineBeforeMembersInAnonymousTypes
         )
         {
             printerOptions.NewLineBeforeMembersInAnonymousTypes =
@@ -95,8 +98,8 @@ internal class EditorConfigSections
         }
 
         if (
-            resolvedConfiguration.NewLineBetweenQueryExpressionClauses
-            is { } newLineBetweenQueryExpressionClauses
+            resolvedConfiguration.NewLineBetweenQueryExpressionClauses is
+            { } newLineBetweenQueryExpressionClauses
         )
         {
             printerOptions.NewLineBetweenQueryExpressionClauses =
@@ -106,6 +109,11 @@ internal class EditorConfigSections
         if (resolvedConfiguration.IncludeGenerated is { } includeGenerated)
         {
             printerOptions.IncludeGenerated = includeGenerated;
+        }
+
+        if (resolvedConfiguration.XmlWhitespaceSensitivity is { } xmlWhitespaceSensitivity)
+        {
+            printerOptions.XmlWhitespaceSensitivity = xmlWhitespaceSensitivity;
         }
 
         return printerOptions;
@@ -118,6 +126,7 @@ internal class EditorConfigSections
         public int? TabWidth { get; }
         public int? MaxLineLength { get; }
         public EndOfLine? EndOfLine { get; }
+        public XmlWhitespaceSensitivity? XmlWhitespaceSensitivity { get; set; }
         public string? Formatter { get; }
         public BraceNewLine? NewLineBeforeOpenBrace { get; }
         public bool? NewLineBeforeElse { get; }
@@ -168,9 +177,23 @@ internal class EditorConfigSections
             }
 
             var endOfLine = sections.LastOrDefault(o => o.EndOfLine != null)?.EndOfLine;
-            if (Enum.TryParse(endOfLine, true, out EndOfLine result))
+            if (Enum.TryParse(endOfLine, true, out EndOfLine parsedEndOfLine))
             {
-                this.EndOfLine = result;
+                this.EndOfLine = parsedEndOfLine;
+            }
+
+            var xmlWhitespaceSensitivity = sections
+                .LastOrDefault(o => o.XmlWhitespaceSensitivity != null)
+                ?.XmlWhitespaceSensitivity;
+            if (
+                Enum.TryParse(
+                    xmlWhitespaceSensitivity,
+                    true,
+                    out XmlWhitespaceSensitivity parsedXmlWhitespaceSensitivity
+                )
+            )
+            {
+                this.XmlWhitespaceSensitivity = parsedXmlWhitespaceSensitivity;
             }
 
             this.Formatter = sections.LastOrDefault(o => o.Formatter is not null)?.Formatter;
@@ -272,18 +295,24 @@ internal class EditorConfigSections
 
     internal static BraceNewLine ConvertToBraceNewLine(string input)
     {
-        BraceNewLine result = BraceNewLine.None;
-        string[] values = input.Split(
+        var result = BraceNewLine.None;
+        var values = input.Split(
             ',',
             StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
         );
 
         foreach (var value in values)
         {
-            var enumValueName = value.Replace("_", "").ToLowerInvariant();
-            foreach (BraceNewLine enumValue in Enum.GetValues(typeof(BraceNewLine)))
+            var enumValueName = value.Replace("_", "");
+            foreach (var enumValue in Enum.GetValues<BraceNewLine>())
             {
-                if (enumValue.ToString().ToLowerInvariant() == enumValueName)
+                if (
+                    string.Equals(
+                        enumValue.ToString(),
+                        enumValueName,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 {
                     result |= enumValue;
                     break;

@@ -6,9 +6,9 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class QueryBody
 {
-    public static Doc Print(QueryBodySyntax node, PrintingContext context)
+    public static Doc Print(QueryBodySyntax node, CSharpPrintingContext context)
     {
-        var docs = new ValueListBuilder<Doc>([null, null, null, null, null]);
+        var docs = new DocListBuilder(5);
         Doc clauseSeparator =
             context.Options.NewLineBetweenQueryExpressionClauses == false ? " " : Doc.Line;
         docs.Add(Doc.Join(clauseSeparator, node.Clauses.Select(o => Node.Print(o, context))));

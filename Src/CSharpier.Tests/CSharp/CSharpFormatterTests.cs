@@ -1,13 +1,10 @@
+using AwesomeAssertions;
 using CSharpier.Core;
 using CSharpier.Core.CSharp;
-using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
-using NUnit.Framework;
 
 namespace CSharpier.Tests.CSharp;
 
-[TestFixture]
-[Parallelizable(ParallelScope.All)]
 internal sealed class CSharpFormatterTests
 {
     [Test]
@@ -17,7 +14,7 @@ internal sealed class CSharpFormatterTests
         var result = CSharpFormatter.Format(code);
 
         result.Code.Should().Be("var someVariable = someValue;\n");
-        result.CompilationErrors.Should().BeEmpty();
+        result.ErrorDiagnostics.Should().BeEmpty();
     }
 
     [Test]
@@ -27,7 +24,7 @@ internal sealed class CSharpFormatterTests
         var result = CSharpFormatter.Format(code);
 
         result.Code.Should().Be(code);
-        result.CompilationErrors.Should().ContainSingle();
+        result.ErrorDiagnostics.Should().ContainSingle();
     }
 
     [Test]
@@ -125,8 +122,9 @@ var someVariable =   someValue;
         result.Code.Should().Be(code.Replace(" =   ", " = "));
     }
 
-    [TestCase("\n")]
-    [TestCase("\r\n")]
+    [Test]
+    [Arguments("\n")]
+    [Arguments("\r\n")]
     public void Format_Should_Get_Line_Endings_With_SyntaxTree(string lineEnding)
     {
         var code = $"public class ClassName {{{lineEnding}}}";

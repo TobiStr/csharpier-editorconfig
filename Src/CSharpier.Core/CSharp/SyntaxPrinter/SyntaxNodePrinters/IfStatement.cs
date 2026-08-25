@@ -6,9 +6,9 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class IfStatement
 {
-    public static Doc Print(IfStatementSyntax node, PrintingContext context)
+    public static Doc Print(IfStatementSyntax node, CSharpPrintingContext context)
     {
-        var docs = new ValueListBuilder<Doc>([null, null, null, null, null, null, null, null]);
+        var docs = new DocListBuilder(8);
         if (node.Parent is not ElseClauseSyntax)
         {
             docs.Add(ExtraNewLines.Print(node));

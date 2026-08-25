@@ -1,18 +1,19 @@
+using AwesomeAssertions;
 using CSharpier.Core;
 using CSharpier.Core.CSharp;
-using FluentAssertions;
-using NUnit.Framework;
 
 namespace CSharpier.Tests;
 
-[Parallelizable(ParallelScope.All)]
 public class DeepRecursionTests
 {
     [Test]
     public async Task Format_Should_Return_Error_For_Deep_Recursion()
     {
         var code = this.uglyLongConcatenatedString;
-        var result = await CSharpFormatter.FormatAsync(code, new PrinterOptions(Formatter.CSharp));
+        var result = await CSharpFormatter.FormatAsync(
+            code,
+            new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
+        );
 
         result.FailureMessage.Should().Be("We can't handle this deep of recursion yet.");
     }

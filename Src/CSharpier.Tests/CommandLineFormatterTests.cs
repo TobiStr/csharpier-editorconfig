@@ -1,15 +1,11 @@
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
-using System.Security.AccessControl;
 using System.Text;
+using AwesomeAssertions;
 using CSharpier.Cli;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NUnit.Framework;
 
 namespace CSharpier.Tests;
 
-[TestFixture]
 public class CommandLineFormatterTests
 {
     private const string UnformattedClassContent = "public class ClassName { public int Field; }";
@@ -17,63 +13,63 @@ public class CommandLineFormatterTests
         "public class ClassName\n{\n    public int Field;\n}\n";
 
     [Test]
-    public void Format_Writes_Failed_To_Compile()
+    public async Task Format_Writes_Failed_To_Compile()
     {
         var context = new TestContext();
         context.WhenAFileExists("Invalid.cs", "asdfasfasdf");
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .ErrorOutputLines.First()
             .Replace('\\', '/')
             .Should()
-            .Be("Error ./Invalid.cs - Failed to compile so was not formatted.");
+            .Be("Error ./Invalid.cs - Was not formatted due to syntax errors.");
 
         result.ExitCode.Should().Be(1);
     }
 
     [Test]
-    public void Format_Writes_Failed_To_Compile_As_Warning()
+    public async Task Format_Writes_Failed_To_Compile_As_Warning()
     {
         var context = new TestContext();
         context.WhenAFileExists("Invalid.cs", "asdfasfasdf");
 
-        var result = Format(context, compilationErrorsAsWarnings: true);
+        var result = await Format(context, syntaxErrorsAsWarnings: true);
 
         result
             .OutputLines.First()
             .Replace('\\', '/')
             .Should()
-            .Be("Warning ./Invalid.cs - Failed to compile so was not formatted.");
+            .Be("Warning ./Invalid.cs - Was not formatted due to syntax errors.");
 
         result.ExitCode.Should().Be(0);
     }
 
     [Test]
-    public void Format_Writes_Failed_To_Compile_For_Subdirectory()
+    public async Task Format_Writes_Failed_To_Compile_For_Subdirectory()
     {
         var context = new TestContext();
         context.WhenAFileExists("Subdirectory/Invalid.cs", "asdfasfasdf");
 
-        var result = Format(context, directoryOrFilePaths: "Subdirectory");
+        var result = await Format(context, directoryOrFilePaths: "Subdirectory");
 
         result
             .ErrorOutputLines.First()
             .Replace('\\', '/')
             .Should()
-            .Be("Error ./Subdirectory/Invalid.cs - Failed to compile so was not formatted.");
+            .Be("Error ./Subdirectory/Invalid.cs - Was not formatted due to syntax errors.");
     }
 
     [Test]
-    public void Format_Writes_Failed_To_Compile_For_FullPath()
+    public async Task Format_Writes_Failed_To_Compile_For_FullPath()
     {
         var context = new TestContext();
         context.WhenAFileExists("Subdirectory/Invalid.cs", "asdfasfasdf");
 
-        var result = Format(
+        var result = await Format(
             context,
-            directoryOrFilePaths: Path.Combine(GetRootPath(), "Subdirectory")
+            directoryOrFilePaths: Path.Combine(context.RootPath, "Subdirectory")
         );
 
         result
@@ -81,32 +77,50 @@ public class CommandLineFormatterTests
             .Replace('\\', '/')
             .Should()
             .Be(
-                $"Error {GetRootPath().Replace('\\', '/')}/Subdirectory/Invalid.cs - Failed to compile so was not formatted."
+                $"Error {context.RootPath.Replace('\\', '/')}/Subdirectory/Invalid.cs - Was not formatted due to syntax errors."
             );
     }
 
     [Test]
-    public void Format_Writes_Failed_To_Compile_With_Directory()
+    public async Task Format_Writes_Failed_To_Compile_With_Directory()
     {
         var context = new TestContext();
         context.WhenAFileExists("Directory/Invalid.cs", "asdfasfasdf");
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .ErrorOutputLines.First()
             .Replace('\\', '/')
             .Should()
-            .Be("Error ./Directory/Invalid.cs - Failed to compile so was not formatted.");
+            .Be("Error ./Directory/Invalid.cs - Was not formatted due to syntax errors.");
     }
 
     [Test]
-    public void Format_Writes_Unsupported()
+    public async Task Format_Rewrites_Only_The_Directory_Prefix_When_Segment_Recurs()
+    {
+        // A subdirectory whose name matches a leading segment of the formatted
+        // directory path would, with a naive string-replace, be rewritten twice.
+        var context = new TestContext();
+        var rootSegment = context.FileSystem.Path.GetFileName(context.RootPath);
+        context.WhenAFileExists($"{rootSegment}/Invalid.cs", "asdfasfasdf");
+
+        var result = await Format(context);
+
+        result
+            .ErrorOutputLines.First()
+            .Replace('\\', '/')
+            .Should()
+            .Be($"Error ./{rootSegment}/Invalid.cs - Was not formatted due to syntax errors.");
+    }
+
+    [Test]
+    public async Task Format_Writes_Unsupported()
     {
         var context = new TestContext();
         context.WhenAFileExists("Unsupported.js", "asdfasfasdf");
 
-        var result = Format(context, directoryOrFilePaths: "Unsupported.js");
+        var result = await Format(context, directoryOrFilePaths: "Unsupported.js");
 
         result
             .OutputLines.First()
@@ -116,13 +130,13 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Format_Does_Not_Write_Unsupported_With_EditorConfig()
+    public async Task Format_Does_Not_Write_Unsupported_With_EditorConfig()
     {
         var context = new TestContext();
         context.WhenAFileExists(".editorconfig", "");
         context.WhenAFileExists("Unsupported.js", "asdfasfasdf");
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .ErrorOutputLines.Should()
@@ -130,30 +144,30 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Format_Does_Not_Write_Unsupported_When_Formatting_Directory()
+    public async Task Format_Does_Not_Write_Unsupported_When_Formatting_Directory()
     {
         var context = new TestContext();
         context.WhenAFileExists("Unsupported.js", "asdfasfasdf");
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.OutputLines.First().Should().StartWith("Formatted 0 files");
     }
 
     [Test]
-    public void Format_Writes_File_With_Directory_Path()
+    public async Task Format_Writes_File_With_Directory_Path()
     {
         var context = new TestContext();
         var unformattedFilePath = "Unformatted.cs";
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        Format(context);
+        await Format(context);
 
         context.GetFileContent(unformattedFilePath).Should().Be(FormattedClassContent);
     }
 
     [Test]
-    public void Formats_CSX_File()
+    public async Task Formats_CSX_File()
     {
         var context = new TestContext();
         var unformattedFilePath = "Unformatted.csx";
@@ -168,7 +182,7 @@ public class CommandLineFormatterTests
             """
         );
 
-        var result = Format(context);
+        var result = await Format(context);
         result.OutputLines.First().Should().StartWith("Formatted 1 files");
 
         context
@@ -185,7 +199,7 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Formats_Overrides_File()
+    public async Task Formats_Overrides_File()
     {
         var context = new TestContext();
         var unformattedFilePath = "Unformatted.cst";
@@ -199,16 +213,17 @@ public class CommandLineFormatterTests
             """
         );
 
-        var result = Format(context);
+        var result = await Format(context);
         result.OutputLines.First().Should().StartWith("Formatted 1 files");
 
         context.GetFileContent(unformattedFilePath).Should().Be(FormattedClassContent);
     }
 
-    [TestCase("0.9.0", false)]
-    [TestCase("9999.0.0", false)]
-    [TestCase("current", true)]
-    public void Works_With_MSBuild_Version_Checking(string version, bool shouldPass)
+    [Test]
+    [Arguments("0.9.0", false)]
+    [Arguments("9999.0.0", false)]
+    [Arguments("current", true)]
+    public async Task Works_With_MSBuild_Version_Checking(string version, bool shouldPass)
     {
         var context = new TestContext();
         var currentVersion = typeof(CommandLineFormatter).Assembly.GetName().Version!.ToString(3);
@@ -225,7 +240,7 @@ public class CommandLineFormatterTests
 "
         );
 
-        var result = Format(context);
+        var result = await Format(context);
 
         if (shouldPass)
         {
@@ -245,7 +260,7 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Works_With_MSBuild_Version_Checking_When_No_Version_Specified()
+    public async Task Works_With_MSBuild_Version_Checking_When_No_Version_Specified()
     {
         var context = new TestContext();
 
@@ -259,7 +274,7 @@ public class CommandLineFormatterTests
 "
         );
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.ExitCode.Should().Be(0);
         result
@@ -268,10 +283,11 @@ public class CommandLineFormatterTests
             .EndWith($"Test.csproj uses an unknown version of CSharpier.MsBuild");
     }
 
-    [TestCase("0.9.0", false)]
-    [TestCase("9999.0.0", false)]
-    [TestCase("current", true)]
-    public void Works_With_MSBuild_Version_Checking_When_No_Version_Specified_With_Directory_Props(
+    [Test]
+    [Arguments("0.9.0", false)]
+    [Arguments("9999.0.0", false)]
+    [Arguments("current", true)]
+    public async Task Works_With_MSBuild_Version_Checking_When_No_Version_Specified_With_Directory_Props(
         string version,
         bool shouldPass
     )
@@ -301,7 +317,7 @@ public class CommandLineFormatterTests
 "
         );
 
-        var result = Format(context);
+        var result = await Format(context);
 
         if (shouldPass)
         {
@@ -321,7 +337,7 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Works_With_MSBuild_Version_Checking_When_No_Version_Included()
+    public async Task Works_With_MSBuild_Version_Checking_When_No_Version_Included()
     {
         var context = new TestContext();
 
@@ -335,44 +351,44 @@ public class CommandLineFormatterTests
 "
         );
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.ExitCode.Should().Be(0);
         result.ErrorOutputLines.Should().BeEmpty();
     }
 
     [Test]
-    public void Format_Writes_File_With_File_Path()
+    public async Task Format_Writes_File_With_File_Path()
     {
         var context = new TestContext();
         const string unformattedFilePath = "Unformatted.cs";
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        Format(context, directoryOrFilePaths: "Unformatted.cs");
+        await Format(context, directoryOrFilePaths: "Unformatted.cs");
 
         context.GetFileContent(unformattedFilePath).Should().Be(FormattedClassContent);
     }
 
     [Test]
-    public void Format_Supports_Skip_Write()
+    public async Task Format_Supports_Skip_Write()
     {
         var context = new TestContext();
         const string unformattedFilePath = "Unformatted.cs";
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        Format(context, skipWrite: true);
+        await Format(context, skipWrite: true);
 
         context.GetFileContent(unformattedFilePath).Should().Be(UnformattedClassContent);
     }
 
     [Test]
-    public void Format_Checks_Unformatted_File()
+    public async Task Format_Checks_Unformatted_File()
     {
         var context = new TestContext();
         const string unformattedFilePath = "Unformatted.cs";
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        var result = Format(context, check: true);
+        var result = await Format(context, check: true);
 
         result.ExitCode.Should().Be(1);
         context.GetFileContent(unformattedFilePath).Should().Be(UnformattedClassContent);
@@ -384,13 +400,13 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Format_Checks_Unformatted_File_With_MsBuildFormat_Message()
+    public async Task Format_Checks_Unformatted_File_With_MsBuildFormat_Message()
     {
         var context = new TestContext();
         const string unformattedFilePath = "Unformatted.cs";
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        var result = Format(context, check: true, logFormat: LogFormat.MsBuild);
+        var result = await Format(context, check: true, logFormat: LogFormat.MsBuild);
 
         result.ExitCode.Should().Be(1);
         context.GetFileContent(unformattedFilePath).Should().Be(UnformattedClassContent);
@@ -401,92 +417,99 @@ public class CommandLineFormatterTests
             .StartWith("./Unformatted.cs: error: Was not formatted.");
     }
 
-    [TestCase("Src/node_modules/File.cs")]
-    [TestCase("node_modules/File.cs")]
-    [TestCase("node_modules/Folder/File.cs")]
-    [TestCase("Src/obj/File.cs")]
-    [TestCase("obj/File.cs")]
-    [TestCase("obj/Folder/File.cs")]
-    public void Format_Ignores_Files_In_Special_Folders(string filePath)
+    [Test]
+    [Arguments("Src/node_modules/File.cs")]
+    [Arguments("node_modules/File.cs")]
+    [Arguments("node_modules/Folder/File.cs")]
+    [Arguments("Src/obj/File.cs")]
+    [Arguments("obj/File.cs")]
+    [Arguments("obj/Folder/File.cs")]
+    public async Task Format_Ignores_Files_In_Special_Folders(string filePath)
     {
         var context = new TestContext();
         context.WhenAFileExists(filePath, UnformattedClassContent);
 
-        var result = Format(context, check: true);
+        var result = await Format(context, check: true);
 
         result.ExitCode.Should().Be(0);
     }
 
     [Test]
-    public void Format_Checks_Formatted_File()
+    public async Task Format_Checks_Formatted_File()
     {
         var context = new TestContext();
         const string formattedFilePath = "Formatted.cs";
         context.WhenAFileExists(formattedFilePath, FormattedClassContent);
-        var result = Format(context, check: true);
+        var result = await Format(context, check: true);
 
         result.ExitCode.Should().Be(0);
     }
 
-    [TestCase("TemporaryGeneratedFile_Tester.cs")]
-    [TestCase("TestFile.designer.cs")]
-    [TestCase("TestFile.generated.cs")]
-    [TestCase("TestFile.g.cs")]
-    [TestCase("TestFile.g.i.cs")]
-    public void Format_Skips_Generated_Files(string fileName)
+    [Test]
+    [Arguments("TemporaryGeneratedFile_Tester.cs")]
+    [Arguments("TestFile.designer.cs")]
+    [Arguments("TestFile.generated.cs")]
+    [Arguments("TestFile.g.cs")]
+    [Arguments("TestFile.g.i.cs")]
+    public async Task Format_Skips_Generated_Files(string fileName)
     {
         var context = new TestContext();
         var unformattedFilePath = fileName;
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 0 files in ");
     }
 
-    [TestCase("TemporaryGeneratedFile_Tester.cs")]
-    [TestCase("TestFile.designer.cs")]
-    [TestCase("TestFile.generated.cs")]
-    [TestCase("TestFile.g.cs")]
-    [TestCase("TestFile.g.i.cs")]
-    public void Format_Formats_Generated_Files_When_Include_Generated(string fileName)
+    [Test]
+    [Arguments("TemporaryGeneratedFile_Tester.cs")]
+    [Arguments("TestFile.designer.cs")]
+    [Arguments("TestFile.generated.cs")]
+    [Arguments("TestFile.g.cs")]
+    [Arguments("TestFile.g.i.cs")]
+    public async Task Format_Formats_Generated_Files_When_Include_Generated(string fileName)
     {
         var context = new TestContext();
         var unformattedFilePath = fileName;
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
 
-        var result = Format(context, includeGenerated: true);
+        var result = await Format(context, includeGenerated: true);
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 1 files in ");
     }
 
-    [TestCase("// <autogenerated />")]
-    [TestCase("/* <autogenerated /> */")]
-    [TestCase("// <auto-generated />")]
-    [TestCase("/* <auto-generated /> */")]
-    public void Format_Skips_Auto_Generated_Comment_File(string comment)
+    [Test]
+    [Arguments("// <autogenerated />")]
+    [Arguments("/* <autogenerated /> */")]
+    [Arguments("// <auto-generated />")]
+    [Arguments("/* <auto-generated /> */")]
+    public async Task Format_Skips_Auto_Generated_Comment_File(string comment)
     {
         var context = new TestContext();
         var unformattedContent = $"{comment}\n{UnformattedClassContent}";
         context.WhenAFileExists("AutoGenerated.cs", unformattedContent);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.ExitCode.Should().Be(0);
         context.GetFileContent("AutoGenerated.cs").Should().Be(unformattedContent);
     }
 
-    [TestCase("// <autogenerated />")]
-    [TestCase("/* <autogenerated /> */")]
-    [TestCase("// <auto-generated />")]
-    [TestCase("/* <auto-generated /> */")]
-    public void Format_Formats_Auto_Generated_Comment_File_When_Include_Generated(string comment)
+    [Test]
+    [Arguments("// <autogenerated />")]
+    [Arguments("/* <autogenerated /> */")]
+    [Arguments("// <auto-generated />")]
+    [Arguments("/* <auto-generated /> */")]
+    public async Task Format_Formats_Auto_Generated_Comment_File_When_Include_Generated(
+        string comment
+    )
     {
         var context = new TestContext();
         var unformattedContent = $"{comment}\n{UnformattedClassContent}";
         context.WhenAFileExists("AutoGenerated.cs", unformattedContent);
 
-        var result = Format(context, includeGenerated: true);
+        var result = await Format(context, includeGenerated: true);
 
         result.ExitCode.Should().Be(0);
         context
@@ -495,31 +518,33 @@ public class CommandLineFormatterTests
             .Be($"{comment}\n{FormattedClassContent}");
     }
 
-    [TestCase("File.cs", "File.cs")]
-    [TestCase("File.cs", "*.cs")]
-    [TestCase("SubFolder/File.cs", "*.cs")]
-    [TestCase("Debug/Logs/File.cs", "**/Logs")]
-    [TestCase("Debug/Logs/File.cs", "Logs/")]
-    [TestCase("Debug/Logs/File.cs", "Debug/Logs/File.cs")]
-    [TestCase(
+    [Test]
+    [Arguments("File.cs", "File.cs")]
+    [Arguments("File.cs", "*.cs")]
+    [Arguments("SubFolder/File.cs", "*.cs")]
+    [Arguments("Debug/Logs/File.cs", "**/Logs")]
+    [Arguments("Debug/Logs/File.cs", "Logs/")]
+    [Arguments("Debug/Logs/File.cs", "Debug/Logs/File.cs")]
+    [Arguments(
         @"Src/CSharpier.Playground/App_Data/Uploads/f45e11a81b926de2af29459af6974bb8.cs",
         "Uploads/"
     )]
-    public void File_In_Ignore_Skips_Formatting(string fileName, string ignoreContents)
+    public async Task File_In_Ignore_Skips_Formatting(string fileName, string ignoreContents)
     {
         var context = new TestContext();
         var unformattedFilePath = fileName;
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
         context.WhenAFileExists(".csharpierignore", ignoreContents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 0 files in ");
     }
 
-    [TestCase("SubFolder/File.cs", "*.cs", "SubFolder")]
-    [TestCase("SubFolder/File.cs", "SubFolder/File.cs", "SubFolder")]
-    public void File_In_Ignore_Skips_Formatting_With_BaseDirectory(
+    [Test]
+    [Arguments("SubFolder/File.cs", "*.cs", "SubFolder")]
+    [Arguments("SubFolder/File.cs", "SubFolder/File.cs", "SubFolder")]
+    public async Task File_In_Ignore_Skips_Formatting_With_BaseDirectory(
         string fileName,
         string ignoreContents,
         string baseDirectory
@@ -530,16 +555,16 @@ public class CommandLineFormatterTests
         context.WhenAFileExists(unformattedFilePath, UnformattedClassContent);
         context.WhenAFileExists(".csharpierignore", ignoreContents);
 
-        var result = Format(
+        var result = await Format(
             context,
-            directoryOrFilePaths: Path.Combine(GetRootPath(), baseDirectory)
+            directoryOrFilePaths: Path.Combine(context.RootPath, baseDirectory)
         );
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 0 files in ");
     }
 
     [Test]
-    public void Multiple_Files_Should_Use_Root_Ignore()
+    public async Task Multiple_Files_Should_Use_Root_Ignore()
     {
         var context = new TestContext();
         var unformattedFilePath1 = "Subfolder/1/File1.cs";
@@ -548,7 +573,7 @@ public class CommandLineFormatterTests
         context.WhenAFileExists(unformattedFilePath2, UnformattedClassContent);
         context.WhenAFileExists(".csharpierignore", "Subfolder/**/*.cs");
 
-        var result = Format(
+        var result = await Format(
             context,
             directoryOrFilePaths: [unformattedFilePath1, unformattedFilePath2]
         );
@@ -557,7 +582,7 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Multiple_Files_Should_Use_Multiple_Ignores()
+    public async Task Multiple_Files_Should_Use_Multiple_Ignores()
     {
         var context = new TestContext();
         var unformattedFilePath1 = context.WhenAFileExists(
@@ -571,7 +596,7 @@ public class CommandLineFormatterTests
         context.WhenAFileExists("SubFolder/1/.csharpierignore", "File1.cs");
         context.WhenAFileExists("SubFolder/2/.csharpierignore", "File2.cs");
 
-        var result = Format(
+        var result = await Format(
             context,
             directoryOrFilePaths: [unformattedFilePath1, unformattedFilePath2]
         );
@@ -580,20 +605,20 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Ignore_Should_Deal_With_Period()
+    public async Task Ignore_Should_Deal_With_Period()
     {
         var context = new TestContext();
         var unformattedFilePath1 = @"Directory.WithPeriod\File1.cs";
         context.WhenAFileExists(unformattedFilePath1, UnformattedClassContent);
         context.WhenAFileExists("Directory.WithPeriod/.csharpierignore", "File1.cs");
 
-        var result = Format(context, directoryOrFilePaths: "Directory.WithPeriod");
+        var result = await Format(context, directoryOrFilePaths: "Directory.WithPeriod");
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 0 files in ");
     }
 
     [Test]
-    public void Ignore_Should_Deal_With_Inconsistent_Slashes()
+    public async Task Ignore_Should_Deal_With_Inconsistent_Slashes()
     {
         var context = new TestContext();
         var altSlash = Path.AltDirectorySeparatorChar;
@@ -601,16 +626,17 @@ public class CommandLineFormatterTests
         context.WhenAFileExists(unformattedFilePath1, UnformattedClassContent);
         context.WhenAFileExists("Child/GrandChild/.csharpierignore", "File1.cs");
 
-        var result = Format(context, directoryOrFilePaths: unformattedFilePath1);
+        var result = await Format(context, directoryOrFilePaths: unformattedFilePath1);
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 0 files in ");
     }
 
-    [TestCase("File.cs", "!File.cs", false)]
-    [TestCase("", "File.cs", true)]
-    [TestCase("!File.cs", "File.cs", true)]
-    [TestCase("File.cs", "", true)]
-    public void CSharpier_Ignore_And_Git_Ignore_Root_Level(
+    [Test]
+    [Arguments("File.cs", "!File.cs", false)]
+    [Arguments("", "File.cs", true)]
+    [Arguments("!File.cs", "File.cs", true)]
+    [Arguments("File.cs", "", true)]
+    public async Task CSharpier_Ignore_And_Git_Ignore_Root_Level(
         string gitIgnoreContents,
         string csharpierIgnoreContents,
         bool isIgnored
@@ -621,7 +647,7 @@ public class CommandLineFormatterTests
         context.WhenAFileExists(".csharpierignore", csharpierIgnoreContents);
         context.WhenAFileExists(".gitignore", gitIgnoreContents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .OutputLines.FirstOrDefault()
@@ -629,11 +655,12 @@ public class CommandLineFormatterTests
             .StartWith(isIgnored ? "Formatted 0 files in " : "Formatted 1 files in ");
     }
 
-    [TestCase("File.cs", "!File.cs", false)]
-    [TestCase("", "File.cs", true)]
-    [TestCase("!File.cs", "File.cs", true)]
-    [TestCase("File.cs", "", true)]
-    public void CSharpier_Ignore_And_Git_Ignore_Sub_Level(
+    [Test]
+    [Arguments("File.cs", "!File.cs", false)]
+    [Arguments("", "File.cs", true)]
+    [Arguments("!File.cs", "File.cs", true)]
+    [Arguments("File.cs", "", true)]
+    public async Task CSharpier_Ignore_And_Git_Ignore_Sub_Level(
         string gitIgnoreContents,
         string csharpierIgnoreContents,
         bool isIgnored
@@ -644,7 +671,7 @@ public class CommandLineFormatterTests
         context.WhenAFileExists(".csharpierignore", csharpierIgnoreContents);
         context.WhenAFileExists("Sub/.gitignore", gitIgnoreContents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .OutputLines.FirstOrDefault()
@@ -652,11 +679,12 @@ public class CommandLineFormatterTests
             .StartWith(isIgnored ? "Formatted 0 files in " : "Formatted 1 files in ");
     }
 
-    [TestCase("File.cs", "!File.cs", false)]
-    [TestCase("", "File.cs", true)]
-    [TestCase("!File.cs", "File.cs", true)]
-    [TestCase("File.cs", "", true)]
-    public void Two_Git_Ignores(
+    [Test]
+    [Arguments("File.cs", "!File.cs", false)]
+    [Arguments("", "File.cs", true)]
+    [Arguments("!File.cs", "File.cs", true)]
+    [Arguments("File.cs", "", true)]
+    public async Task Two_Git_Ignores(
         string rootGitIgnoreContents,
         string subGitIgnoreContents,
         bool isIgnored
@@ -667,7 +695,7 @@ public class CommandLineFormatterTests
         context.WhenAFileExists(".gitignore", rootGitIgnoreContents);
         context.WhenAFileExists("Sub/.gitignore", subGitIgnoreContents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .OutputLines.FirstOrDefault()
@@ -676,63 +704,165 @@ public class CommandLineFormatterTests
     }
 
     [Test]
-    public void Gitignore_Outside_Git_Is_Not_Used()
+    public async Task Gitignore_Evaluates_Negation_Patterns_Last()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists("Folder1/Folder2/IgnoreMe/File.cs", UnformattedClassContent);
+        context.WhenAFileExists(
+            ".gitignore",
+            """
+            Folder1/*
+            !Folder2/
+            IgnoreMe/
+            """
+        );
+
+        var result = await Format(context);
+
+        result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 0 files in ");
+    }
+
+    [Test]
+    public async Task Gitignore_Outside_Git_Is_Not_Used()
     {
         var context = new TestContext();
         context.WhenAFileExists("Sub/File.cs", UnformattedClassContent);
         context.WhenAFileExists(".gitignore", "*.cs");
         context.WhenAFileExists("Sub/.git/test.txt", string.Empty);
 
-        var result = Format(context, directoryOrFilePaths: "Sub");
+        var result = await Format(context, directoryOrFilePaths: "Sub");
 
         result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 1 files in ");
     }
 
     [Test]
-    public void Write_Stdout_Should_Only_Write_File()
+    public async Task Gitignore_Above_Worktree_Is_Not_Used()
+    {
+        // In a git worktree, `.git` is a file containing a `gitdir:` pointer rather than
+        // a directory. The walk that collects .gitignore files must still stop at this
+        // boundary, otherwise the parent repo's .gitignore (which typically excludes the
+        // worktree path) will mark every file in the worktree as ignored.
+        var context = new TestContext();
+        context.WhenAFileExists("Sub/File.cs", UnformattedClassContent);
+        context.WhenAFileExists(".gitignore", "*.cs");
+        context.WhenAFileExists("Sub/.git", "gitdir: ../.git/worktrees/foo");
+
+        var result = await Format(context, directoryOrFilePaths: "Sub");
+
+        result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 1 files in ");
+    }
+
+    [Test]
+    public async Task Gitignore_Can_Unignore_All_Directories()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "IgnoreTest/IncludedSourceFolder/Test/File.cs",
+            UnformattedClassContent
+        );
+        context.WhenAFileExists(
+            ".gitignore",
+            """
+            *
+            !*/
+            !/IgnoreTest/IncludedSourceFolder/**/*.cs
+            """
+        );
+
+        var result = await Format(context);
+
+        result.OutputLines.FirstOrDefault().Should().StartWith("Formatted 1 files in ");
+    }
+
+    [Test]
+    public async Task Write_Stdout_Should_Only_Write_File()
     {
         var context = new TestContext();
         context.WhenAFileExists("file1.cs", UnformattedClassContent);
 
-        var result = Format(context, writeStdout: true);
+        var result = await Format(context, writeStdout: true);
 
         result.OutputLines.Should().ContainSingle();
         result.OutputLines.First().Should().Be(FormattedClassContent);
     }
 
     [Test]
-    public void Should_Format_StandardInput_When_Provided()
+    public async Task Should_Format_StandardInput_When_Provided()
     {
         var context = new TestContext();
-        var result = Format(context, standardInFileContents: UnformattedClassContent);
+        var result = await Format(context, standardInFileContents: UnformattedClassContent);
 
         result.OutputLines.Should().ContainSingle();
         result.OutputLines.First().Should().Be(FormattedClassContent);
     }
 
     [Test]
-    public void Should_Format_StandardInput_Xml_When_Provided()
+    public async Task Should_Format_StandardInput_Xml_When_Provided()
     {
         var context = new TestContext();
-        var result = Format(context, standardInFileContents: "<element> </element>");
+        var result = await Format(context, standardInFileContents: "<element> </element>");
 
         result.OutputLines.Should().ContainSingle();
         result.OutputLines.First().Trim().Should().Be("<element></element>");
     }
 
     [Test]
-    public void Should_Format_StandardInput_And_Not_Consider_Gitignore_When_No_Path_Supplied()
+    public async Task Should_Format_StandardInput_And_Not_Consider_Gitignore_When_No_Path_Supplied()
     {
         var context = new TestContext();
         context.WhenAFileExists(".gitignore", "*");
-        var result = Format(context, standardInFileContents: UnformattedClassContent);
+        var result = await Format(context, standardInFileContents: UnformattedClassContent);
 
         result.OutputLines.Should().ContainSingle();
         result.OutputLines.First().Should().Be(FormattedClassContent);
     }
 
     [Test]
-    public void File_With_Mismatched_Line_Endings_In_Verbatim_String_Should_Pass_Validation()
+    public async Task Should_Format_StandardInput_When_StdinFilePath_Directory_Does_Not_Exist()
+    {
+        var context = new TestContext();
+        var result = await Format(
+            context,
+            standardInFileContents: UnformattedClassContent,
+            directoryOrFilePaths: "NonExistent/SubDir/File.cs"
+        );
+
+        result.OutputLines.Should().ContainSingle();
+        result.OutputLines.First().Should().Be(FormattedClassContent);
+    }
+
+    [Test]
+    public async Task Should_Resolve_Config_From_Ancestor_When_StdinFilePath_Directory_Does_Not_Exist()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(".csharpierrc", "printWidth: 10");
+
+        var result = await Format(
+            context,
+            standardInFileContents: "var myVariable = someLongValue;",
+            directoryOrFilePaths: "NonExistent/SubDir/File.cs"
+        );
+
+        result.OutputLines.First().Should().Be("var myVariable =\n    someLongValue;\n");
+    }
+
+    [Test]
+    public async Task Should_Resolve_Ignore_From_Ancestor_When_StdinFilePath_Directory_Does_Not_Exist()
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(".csharpierignore", "File.cs");
+
+        var result = await Format(
+            context,
+            standardInFileContents: UnformattedClassContent,
+            directoryOrFilePaths: "NonExistent/SubDir/File.cs"
+        );
+
+        result.OutputLines.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task File_With_Mismatched_Line_Endings_In_Verbatim_String_Should_Pass_Validation()
     {
         var context = new TestContext();
         context.WhenAFileExists(
@@ -740,13 +870,13 @@ public class CommandLineFormatterTests
             "public class ClassName\n{\npublic string Value = @\"EndThisLineWith\r\nEndThisLineWith\n\";\n}"
         );
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.ExitCode.Should().Be(0);
     }
 
     [Test]
-    public void File_With_Compilation_Error_Should_Not_Lose_Code()
+    public async Task File_With_Compilation_Error_Should_Not_Lose_Code()
     {
         var context = new TestContext();
         var contents =
@@ -756,28 +886,29 @@ public class CommandLineFormatterTests
 ";
         context.WhenAFileExists("Invalid.cs", contents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         context.GetFileContent("Invalid.cs").Should().Be(contents);
         result
             .ErrorOutputLines.First()
             .Replace('\\', '/')
             .Should()
-            .Be("Error ./Invalid.cs - Failed to compile so was not formatted.");
+            .Be("Error ./Invalid.cs - Was not formatted due to syntax errors.");
     }
 
-    [TestCase(
+    [Test]
+    [Arguments(
         @"class ClassName
 {
 #if DEBUG
     private void MethodName() { }
 
-    static public void ReorderModifiers() { }
+    static public async Task ReorderModifiers() { }
 #endif
 }
 "
     )]
-    [TestCase(
+    [Arguments(
         @"#if DEBUG
 
 class ClassName
@@ -790,13 +921,15 @@ class ClassName
 #endif
 "
     )]
-    public void File_With_Reorder_Modifiers_In_If_Directive_Should_Pass_Validation(string contents)
+    public async Task File_With_Reorder_Modifiers_In_If_Directive_Should_Pass_Validation(
+        string contents
+    )
     {
         var context = new TestContext();
 
         context.WhenAFileExists("file1.cs", contents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         context
             .GetFileContent("file1.cs")
@@ -807,7 +940,7 @@ class ClassName
     }
 
     [Test]
-    public void File_With_Reordered_Usings_In_If_Directive_Should_Pass_Validation()
+    public async Task File_With_Reordered_Usings_In_If_Directive_Should_Pass_Validation()
     {
         var context = new TestContext();
 
@@ -828,14 +961,14 @@ class ClassName
             """
         );
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.ErrorOutputLines.Should().BeEmpty();
         result.OutputLines.First().Should().StartWith("Formatted 1 files in");
     }
 
     [Test]
-    public void File_With_Added_Trailing_Comma_Before_Comment_Should_Pass_Validation()
+    public async Task File_With_Added_Trailing_Comma_Before_Comment_Should_Pass_Validation()
     {
         var context = new TestContext();
 
@@ -848,22 +981,23 @@ class ClassName
             """;
         context.WhenAFileExists("file1.cs", fileContents);
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result.ErrorOutputLines.Should().BeEmpty();
         result.OutputLines.First().Should().StartWith("Formatted 1 files in");
     }
 
-    [TestCase(".csharpierrc")]
-    [TestCase(".csharpierrc.json")]
-    [TestCase(".csharpierrc.yaml")]
-    public void Empty_Config_Files_Should_Log_Warning(string configFileName)
+    [Test]
+    [Arguments(".csharpierrc")]
+    [Arguments(".csharpierrc.json")]
+    [Arguments(".csharpierrc.yaml")]
+    public async Task Empty_Config_Files_Should_Log_Warning(string configFileName)
     {
         var context = new TestContext();
         var configPath = context.WhenAFileExists(".csharpierrc", "");
         context.WhenAFileExists("file1.cs", "public class ClassName { }");
 
-        var result = Format(context);
+        var result = await Format(context);
 
         result
             .OutputLines.First()
@@ -872,19 +1006,19 @@ class ClassName
     }
 
     [Test]
-    public void Should_Support_Config_Path()
+    public async Task Should_Support_Config_Path()
     {
         var context = new TestContext();
         var configPath = context.WhenAFileExists("config/.csharpierrc", "printWidth: 10");
         context.WhenAFileExists("file1.cs", "var myVariable = someLongValue;");
 
-        Format(context, configPath: configPath);
+        await Format(context, configPath: configPath);
 
         context.GetFileContent("file1.cs").Should().Be("var myVariable =\n    someLongValue;\n");
     }
 
     [Test]
-    public void Should_Support_Config_Path_With_Editor_Config()
+    public async Task Should_Support_Config_Path_With_Editor_Config()
     {
         var context = new TestContext();
         var configPath = context.WhenAFileExists(
@@ -896,13 +1030,13 @@ class ClassName
         );
         var fileName = context.WhenAFileExists("file1.cs", "var myVariable = someLongValue;");
 
-        Format(context, configPath: configPath);
+        await Format(context, configPath: configPath);
 
         context.GetFileContent(fileName).Should().Be("var myVariable =\n    someLongValue;\n");
     }
 
     [Test]
-    public void Should_Not_Fail_With_Invalid_Editor_Config()
+    public async Task Should_Not_Fail_With_Invalid_Editor_Config()
     {
         var context = new TestContext();
         context.WhenAFileExists(
@@ -914,14 +1048,15 @@ class ClassName
         );
         var fileName = context.WhenAFileExists("file1.cs", "var myVariable   = someLongValue;");
 
-        Format(context);
+        await Format(context);
 
         context.GetFileContent(fileName).Should().Be("var myVariable = someLongValue;\n");
     }
 
-    [TestCase(".gitignore")]
-    [TestCase(".csharpierignore")]
-    public void Should_Respect_Ignored_Editor_Config(string ignoreFileName)
+    [Test]
+    [Arguments(".gitignore")]
+    [Arguments(".csharpierignore")]
+    public async Task Should_Respect_Ignored_Editor_Config(string ignoreFileName)
     {
         var context = new TestContext();
         context.WhenAFileExists(
@@ -934,13 +1069,13 @@ class ClassName
         context.WhenAFileExists(ignoreFileName, ".editorconfig");
         var fileName = context.WhenAFileExists("file1.cs", "var myVariable = someLongValue;");
 
-        Format(context);
+        await Format(context);
 
         context.GetFileContent(fileName).Should().Be("var myVariable =\n    someLongValue;\n");
     }
 
     [Test]
-    public void Should_Work_With_Extensionless_File()
+    public async Task Should_Work_With_Extensionless_File()
     {
         var context = new TestContext();
         context.WhenAFileExists(
@@ -950,12 +1085,15 @@ class ClassName
             """
         );
 
-        Format(context, directoryOrFilePaths: "LICENSE");
+        await Format(context, directoryOrFilePaths: "LICENSE");
     }
 
-    [TestCase("\r\n")]
-    [TestCase("\n")]
-    public void Format_XML_With_Multiline_Comment_Uses_Consistent_Line_Breaks(string lineBreak)
+    [Test]
+    [Arguments("\r\n")]
+    [Arguments("\n")]
+    public async Task Format_XML_With_Multiline_Comment_Uses_Consistent_Line_Breaks(
+        string lineBreak
+    )
     {
         var context = new TestContext();
         var content = new StringBuilder();
@@ -971,19 +1109,19 @@ class ClassName
 
         context.WhenAFileExists("Xml.xml", content.ToString());
 
-        Format(context);
+        await Format(context);
 
         context.GetFileContent("Xml.xml").Should().Be(content.ToString());
     }
 
-    private static FormatResult Format(
+    private static async Task<FormatResult> Format(
         TestContext context,
         bool skipWrite = false,
         bool check = false,
         LogFormat logFormat = LogFormat.Console,
         bool writeStdout = false,
         bool includeGenerated = false,
-        bool compilationErrorsAsWarnings = false,
+        bool syntaxErrorsAsWarnings = false,
         string? standardInFileContents = null,
         string? configPath = null,
         params string[] directoryOrFilePaths
@@ -992,61 +1130,59 @@ class ClassName
         var originalDirectoryOrFilePaths = directoryOrFilePaths;
         if (directoryOrFilePaths.Length == 0)
         {
-            directoryOrFilePaths = [GetRootPath()];
+            directoryOrFilePaths = [context.RootPath];
             originalDirectoryOrFilePaths = ["."];
         }
         else
         {
             directoryOrFilePaths = directoryOrFilePaths
-                .Select(o => context.FileSystem.Path.Combine(GetRootPath(), o))
+                .Select(o => context.FileSystem.Path.Combine(context.RootPath, o))
                 .ToArray();
         }
 
         var fakeConsole = new TestConsole();
         var testLogger = new ConsoleLogger(fakeConsole, LogLevel.Information, logFormat);
-        var exitCode = CommandLineFormatter
-            .Format(
-                new CommandLineOptions
-                {
-                    ConfigPath = configPath,
-                    DirectoryOrFilePaths = directoryOrFilePaths,
-                    OriginalDirectoryOrFilePaths = originalDirectoryOrFilePaths,
-                    SkipWrite = skipWrite,
-                    Check = check,
-                    LogFormat = logFormat,
-                    WriteStdout = writeStdout || standardInFileContents != null,
-                    StandardInFileContents = standardInFileContents,
-                    IncludeGenerated = includeGenerated,
-                    CompilationErrorsAsWarnings = compilationErrorsAsWarnings,
-                },
-                context.FileSystem,
-                fakeConsole,
-                testLogger,
-                CancellationToken.None
-            )
-            .Result;
+        var exitCode = await CommandLineFormatter.Format(
+            new CommandLineOptions
+            {
+                ConfigPath = configPath,
+                DirectoryOrFilePaths = directoryOrFilePaths,
+                OriginalDirectoryOrFilePaths = originalDirectoryOrFilePaths,
+                SkipWrite = skipWrite,
+                Check = check,
+                LogFormat = logFormat,
+                WriteStdout = writeStdout || standardInFileContents != null,
+                StandardInFileContents = standardInFileContents,
+                IncludeGenerated = includeGenerated,
+                SyntaxErrorsAsWarnings = syntaxErrorsAsWarnings,
+            },
+            context.FileSystem,
+            fakeConsole,
+            testLogger,
+            CancellationToken.None
+        );
 
         return new FormatResult(exitCode, fakeConsole.GetLines(), fakeConsole.GetErrorLines());
-    }
-
-    private static string GetRootPath()
-    {
-        return OperatingSystem.IsWindows() ? @"c:\test" : "/Test";
     }
 
     private sealed class TestContext
     {
         public readonly MockFileSystem FileSystem = new();
 
+        public readonly string RootPath = Path.Combine(
+            Path.GetTempPath(),
+            Guid.NewGuid().ToString()
+        );
+
         public TestContext()
         {
-            this.FileSystem.AddDirectory(GetRootPath());
+            this.FileSystem.AddDirectory(this.RootPath);
         }
 
         public string WhenAFileExists(string path, string contents)
         {
             path = this
-                .FileSystem.Path.Combine(GetRootPath(), path)
+                .FileSystem.Path.Combine(this.RootPath, path)
                 .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
             this.FileSystem.AddFile(path, new MockFileData(contents));
             return path;
@@ -1054,7 +1190,7 @@ class ClassName
 
         public string GetFileContent(string path)
         {
-            path = this.FileSystem.Path.Combine(GetRootPath(), path);
+            path = this.FileSystem.Path.Combine(this.RootPath, path);
             return this.FileSystem.File.ReadAllText(path);
         }
     }

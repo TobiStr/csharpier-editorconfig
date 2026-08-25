@@ -21,6 +21,10 @@ internal class RawNode
     public RawAttribute[] Attributes { get; set; } = [];
     public List<RawNode> Nodes { get; set; } = [];
     public string Value { get; set; } = string.Empty;
+    public required XmlWhitespaceSensitivity XmlWhitespaceSensitivity { get; set; }
+    public int StartPosition { get; set; }
+    public int EndPosition { get; set; }
+    public CSharpierIgnoreType CSharpierIgnoreType { get; set; }
 
     public bool IsTextLike()
     {
@@ -31,4 +35,37 @@ internal class RawNode
     {
         return this.NodeType is XmlNodeType.Element ? this.Nodes.LastOrDefault() ?? this : this;
     }
+
+    public override string? ToString()
+    {
+        if (this.IsTextLike())
+        {
+            return this.Value;
+        }
+
+        if (this.NodeType is XmlNodeType.Element)
+        {
+            if (this.IsEmpty)
+            {
+                return "<" + this.Name + " />";
+            }
+
+            return "<" + this.Name;
+        }
+
+        if (this.NodeType is XmlNodeType.EndElement)
+        {
+            return "</" + this.Name + ">";
+        }
+
+        return base.ToString();
+    }
+}
+
+internal enum CSharpierIgnoreType
+{
+    None,
+    Ignore,
+    IgnoreStart,
+    IgnoreEnd,
 }

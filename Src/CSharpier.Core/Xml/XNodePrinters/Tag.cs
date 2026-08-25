@@ -1,74 +1,71 @@
 using System.Xml;
-using CSharpier.Core.CSharp.SyntaxPrinter;
 using CSharpier.Core.DocTypes;
 
 namespace CSharpier.Core.Xml.XNodePrinters;
 
 internal static class Tag
 {
-    public static Doc PrintOpeningTag(RawNode rawNode, PrintingContext context)
+    public static Doc PrintOpeningTag(RawNode rawNode, XmlPrintingContext context)
     {
         return Doc.Concat(
             PrintOpeningTagStart(rawNode, context),
             Attributes.Print(rawNode, context),
-            rawNode.IsEmpty ? Doc.Null : PrintOpeningTagEnd(rawNode)
+            rawNode.IsEmpty ? Doc.Null : PrintOpeningTagEnd(rawNode, context)
         );
     }
 
-    private static Doc PrintOpeningTagStart(RawNode rawNode, PrintingContext context)
+    private static Doc PrintOpeningTagStart(RawNode rawNode, XmlPrintingContext context)
     {
         return
             rawNode.PreviousNode is not null
             && NeedsToBorrowNextOpeningTagStartMarker(rawNode.PreviousNode)
             ? Doc.Null
             : Doc.Concat(
-                PrintOpeningTagPrefix(rawNode),
+                PrintOpeningTagPrefix(rawNode, context),
                 PrintOpeningTagStartMarker(rawNode, context)
             );
     }
 
-    private static Doc PrintOpeningTagEnd(RawNode rawNode)
+    private static Doc PrintOpeningTagEnd(RawNode rawNode, XmlPrintingContext context)
     {
         return
             rawNode.Nodes.FirstOrDefault() is { } firstNode
-            && NeedsToBorrowParentOpeningTagEndMarker(firstNode)
+            && NeedsToBorrowParentOpeningTagEndMarker(firstNode, context)
             ? Doc.Null
             : ">";
     }
 
-    public static Doc PrintOpeningTagPrefix(RawNode rawNode)
+    public static Doc PrintOpeningTagPrefix(RawNode rawNode, XmlPrintingContext context)
     {
-        return NeedsToBorrowParentOpeningTagEndMarker(rawNode) ? ">" : "";
+        return NeedsToBorrowParentOpeningTagEndMarker(rawNode, context) ? ">" : "";
     }
 
-    public static Doc PrintClosingTag(RawNode rawNode, PrintingContext context)
+    public static Doc PrintClosingTag(RawNode rawNode, XmlPrintingContext context)
     {
         return Doc.Concat(
             rawNode.IsEmpty ? Doc.Null : PrintClosingTagStart(rawNode, context),
-            PrintClosingTagEnd(rawNode, context)
+            rawNode.Nodes.LastOrDefault() is { } node
+            && PrintParentClosingTagStartWithContent(node, context)
+                ? Doc.Null
+                : Doc.Concat(
+                    PrintClosingTagEndMarker(rawNode),
+                    PrintClosingTagSuffix(rawNode, context)
+                )
         );
     }
 
-    public static Doc PrintClosingTagStart(RawNode rawNode, PrintingContext context)
+    public static Doc PrintClosingTagStart(RawNode rawNode, XmlPrintingContext context)
     {
         var lastChild = rawNode.Nodes.LastOrDefault();
 
-        return lastChild is not null && NeedsToBorrowParentClosingTagStartMarker(lastChild)
+        return lastChild is not null && PrintParentClosingTagStartWithContent(lastChild, context)
             ? Doc.Null
             : PrintClosingTagStartMarker(rawNode, context);
     }
 
-    public static Doc PrintClosingTagStartMarker(RawNode rawNode, PrintingContext context)
+    public static Doc PrintClosingTagStartMarker(RawNode rawNode, XmlPrintingContext context)
     {
         return $"</{rawNode.Name}";
-    }
-
-    public static Doc PrintClosingTagEnd(RawNode rawNode, PrintingContext context)
-    {
-        return Doc.Concat(
-            PrintClosingTagEndMarker(rawNode),
-            PrintClosingTagSuffix(rawNode, context)
-        );
     }
 
     public static Doc PrintClosingTagEndMarker(RawNode rawNode)
@@ -76,73 +73,87 @@ internal static class Tag
         return rawNode.IsEmpty ? "/>" : ">";
     }
 
-    public static Doc PrintClosingTagSuffix(RawNode rawNode, PrintingContext context)
+    public static Doc PrintClosingTagSuffix(RawNode rawNode, XmlPrintingContext context)
     {
-        return NeedsToBorrowParentClosingTagStartMarker(rawNode)
-                ? PrintClosingTagStartMarker(rawNode.Parent!, context)
+        return PrintParentClosingTagStartWithContent(rawNode, context)
+                ? Doc.Concat(
+                    PrintClosingTagStartMarker(rawNode.Parent!, context),
+                    PrintClosingTagEndMarker(rawNode.Parent!)
+                )
             : NeedsToBorrowNextOpeningTagStartMarker(rawNode)
                 ? PrintOpeningTagStartMarker(rawNode.NextNode!, context)
             : Doc.Null;
     }
 
-    private static Doc PrintOpeningTagStartMarker(RawNode rawNode, PrintingContext context)
+    private static Doc PrintOpeningTagStartMarker(RawNode rawNode, XmlPrintingContext context)
     {
-        if (rawNode.NodeType != XmlNodeType.Element)
-        {
-            return "<" + rawNode.Name;
-        }
-
         return $"<{rawNode.Name}";
     }
 
     private static bool NeedsToBorrowNextOpeningTagStartMarker(RawNode rawNode)
     {
-        /*
-         *     123<p
-         *        ^^
-         *     >
-         */
+        /* 123<p
+              ^^
+            > */
         return rawNode.NextNode is not null
             && !rawNode.NextNode.IsTextLike()
             && rawNode.IsTextLike()
-            && rawNode.NodeType is XmlNodeType.Text and not XmlNodeType.CDATA
-        // && node.isTrailingSpaceSensitive
-        // prettier does something with removing end of line nodes and setting this value, I don't know
-        // that we have that functionality
-        // && !node.hasTrailingSpaces
-        ;
+            && rawNode.NodeType is XmlNodeType.Text and not XmlNodeType.CDATA;
     }
 
-    private static bool NeedsToBorrowParentClosingTagStartMarker(RawNode rawNode)
+    public static bool PrintParentClosingTagStartWithContent(
+        RawNode rawNode,
+        XmlPrintingContext context
+    )
     {
+        /* <p>
+             123</p>
+                ^^^^*/
+        // TODO #1790 we really want this last condition only if the indentation of the last line of the text value matches
+        // the indentation of the start element. Bleh.
         /*
-         *     <p>
-         *       123</p
-         *          ^^^
-         *     >
-         *
-         *         123</b
-         *       ></a
-         *        ^^^
-         *     >
+may have to handle one of these vs the second
+<Root>
+  <Element Attribute="TheSign">
+    Life is demanding.
+    </Element>
+</Root>
+<Root>
+  <Element Attribute="TheSign">
+    Life is demanding.
+  </Element>
+</Root>
+there is also this case
+<Root>
+       <Element >
+    Life is demanding.
+         </Element>
+</Root>
          */
-        return rawNode.NextNode is null
+        return rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Strict
+            && rawNode.NextNode is null
             && rawNode.IsTextLike()
-            && rawNode.GetLastDescendant().NodeType is XmlNodeType.Text;
+            && rawNode.GetLastDescendant() is { NodeType: XmlNodeType.Text } textNode
+            && (
+                textNode.Value[^1] is not (' ' or '\r' or '\n')
+                || !textNode.Value.Contains('\n')
+                || rawNode.Parent!.Nodes.Any(o => !o.IsTextLike())
+            );
     }
 
-    public static bool NeedsToBorrowParentOpeningTagEndMarker(RawNode rawNode)
+    public static bool NeedsToBorrowParentOpeningTagEndMarker(
+        RawNode rawNode,
+        XmlPrintingContext context
+    )
     {
-        /*
-         *     <p
-         *       >123
-         *       ^
-         *
-         *     <p
-         *       ><a
-         *       ^
-         */
-        return rawNode.PreviousNode is null
+        /* <p
+             >123
+             ^
+           <p
+             ><a
+             ^ */
+        return rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Strict
+            && rawNode.PreviousNode is null
             && rawNode.NodeType is XmlNodeType.Text
             && rawNode.Value![0] is not ('\r' or '\n');
     }

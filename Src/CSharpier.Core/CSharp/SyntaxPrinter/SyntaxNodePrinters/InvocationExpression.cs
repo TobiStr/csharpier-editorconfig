@@ -18,12 +18,12 @@ internal record PrintedNode(CSharpSyntaxNode Node, Doc Doc);
 // https://github.com/prettier/prettier/pull/7889
 internal static class InvocationExpression
 {
-    public static Doc Print(InvocationExpressionSyntax node, PrintingContext context)
+    public static Doc Print(InvocationExpressionSyntax node, CSharpPrintingContext context)
     {
         return PrintMemberChain(node, context);
     }
 
-    public static Doc PrintMemberChain(ExpressionSyntax node, PrintingContext context)
+    public static Doc PrintMemberChain(ExpressionSyntax node, CSharpPrintingContext context)
     {
         var parent = node.Parent;
         var printedNodes = new List<PrintedNode>();
@@ -128,7 +128,7 @@ internal static class InvocationExpression
     private static void FlattenAndPrintNodes(
         ExpressionSyntax expression,
         List<PrintedNode> printedNodes,
-        PrintingContext context
+        CSharpPrintingContext context
     )
     {
         /*
@@ -385,9 +385,9 @@ internal static class InvocationExpression
             return Doc.Null;
         }
 
-        var result = new ValueListBuilder<Doc>(groups.Count * 2);
+        var result = new DocListBuilder(groups.Count * 2);
 
-        for (int index = 0; index < groups.Count; index++)
+        for (var index = 0; index < groups.Count; index++)
         {
             Doc GetPossibleContents()
             {
