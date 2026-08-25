@@ -10,6 +10,10 @@ internal class ConfigurationFileOptions
     public int? IndentSize { get; init; }
     public bool UseTabs { get; init; }
 
+    // Fork (csharpier-editorconfig): also configurable via csharpier_break_chained_member_access
+    public bool BreakChainedMemberAccess { get; init; }
+    public int? BreakChainedMemberAccessMinimumLinks { get; init; }
+
     [JsonConverter(typeof(CaseInsensitiveEnumConverter<XmlWhitespaceSensitivity>))]
     public XmlWhitespaceSensitivity? XmlWhitespaceSensitivity { get; init; }
 
@@ -42,7 +46,9 @@ internal class ConfigurationFileOptions
                 matchingOverride.IndentSize,
                 matchingOverride.PrintWidth,
                 matchingOverride.UseTabs,
-                matchingOverride.EndOfLine
+                matchingOverride.EndOfLine,
+                matchingOverride.BreakChainedMemberAccess,
+                matchingOverride.BreakChainedMemberAccessMinimumLinks
             );
         }
 
@@ -56,7 +62,9 @@ internal class ConfigurationFileOptions
                 this.IndentSize,
                 this.PrintWidth,
                 this.UseTabs,
-                this.EndOfLine
+                this.EndOfLine,
+                this.BreakChainedMemberAccess,
+                this.BreakChainedMemberAccessMinimumLinks
             );
         }
 
@@ -70,7 +78,9 @@ internal class ConfigurationFileOptions
         int? indentSize,
         int? printWidth,
         bool useTabs,
-        EndOfLine endOfLine
+        EndOfLine endOfLine,
+        bool breakChainedMemberAccess,
+        int? breakChainedMemberAccessMinimumLinks
     )
     {
         var printerOptions = new PrinterOptions(
@@ -80,7 +90,14 @@ internal class ConfigurationFileOptions
         {
             UseTabs = useTabs,
             EndOfLine = endOfLine,
+            BreakChainedMemberAccess = breakChainedMemberAccess,
         };
+
+        if (breakChainedMemberAccessMinimumLinks is >= 1)
+        {
+            printerOptions.BreakChainedMemberAccessMinimumLinks =
+                breakChainedMemberAccessMinimumLinks.Value;
+        }
 
         if (indentSize is not null)
         {
@@ -111,6 +128,9 @@ internal class Override
     public int? PrintWidth { get; init; }
     public int? IndentSize { get; init; }
     public bool UseTabs { get; init; }
+
+    public bool BreakChainedMemberAccess { get; init; }
+    public int? BreakChainedMemberAccessMinimumLinks { get; init; }
 
     [JsonConverter(typeof(CaseInsensitiveEnumConverter<XmlWhitespaceSensitivity>))]
     public XmlWhitespaceSensitivity? XmlWhitespaceSensitivity { get; init; }

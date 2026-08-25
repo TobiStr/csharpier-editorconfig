@@ -154,12 +154,68 @@ csharp_new_line_before_members_in_object_initializers = null
 csharp_new_line_before_members_in_anonymous_types = null
 csharp_new_line_between_query_expression_clauses = true
 csharpier_use_prettier_style_trailing_commas = true
+# Force fluent/member-access chains onto one line per link, ignoring max_line_length
+csharpier_break_chained_member_access = false
+csharpier_break_chained_member_access_minimum_links = 2
 
 [*.{config,csproj,props,slnx,targets,xaml,xml}]
 indent_style = space
 indent_size = 2
 max_line_length = 100
 ```
+
+#### Breaking chained member access
+
+By default CSharpier keeps a member-access chain on one line whenever it fits within
+`max_line_length`. Setting `csharpier_break_chained_member_access = true` forces every
+qualifying chain onto one link per line regardless of the line length.
+
+A *link* is one `.` or `?.` access after the root of the chain, so `foo.Bar()` has one link
+and `items.Select(...).Where(...).ToList()` has three.
+`csharpier_break_chained_member_access_minimum_links` (default `2`) sets how many links a
+chain needs before it is broken. The default leaves ordinary accesses such as
+`Console.WriteLine(x)` and `string.Empty` untouched. Setting it to `1` additionally breaks
+one-link chains that are being assigned; a one-link statement chain has nothing left to
+indent, so it stays on one line either way.
+
+A chain that forms a statement keeps its first link on the root line - an expression
+statement, an `if` / `while` / `foreach` / `switch` condition, a `return`. A chain whose value
+is assigned or passed on - a variable initializer, an assignment, an argument, a lambda body -
+starts every link on its own line, so the `=` stays readable. After a `=>` - an expression
+bodied member or a lambda body - the root stays on the arrow's line and every link goes below
+it.
+
+```csharp
+// csharpier_break_chained_member_access = false
+var result = items.Select(x => x.Id).Where(x => x > 0).ToList();
+services.AddSingleton<IA, A>().AddScoped<IB, B>().AddTransient<IC, C>();
+
+// csharpier_break_chained_member_access = true
+var result = items
+    .Select(x => x.Id)
+    .Where(x => x > 0)
+    .ToList();
+
+services.AddSingleton<IA, A>()
+    .AddScoped<IB, B>()
+    .AddTransient<IC, C>();
+
+if (
+    app.IsReady()
+        .Check()
+) { }
+
+B Build() => builder
+    .AddA()
+    .AddB();
+```
+
+Only the breaks *between* links are forced. Everything inside a link - argument lists,
+lambdas, initializers - still follows `max_line_length`. Chains inside an interpolated
+string are never broken, because a newline in an interpolation hole does not compile.
+
+These two options are also supported in a `.csharpierrc` file as `breakChainedMemberAccess`
+and `breakChainedMemberAccessMinimumLinks`.
 
 Formatting non-standard file extensions using csharpier can be accomplished with the `csharpier_formatter` option
 ```ini

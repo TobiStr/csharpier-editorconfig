@@ -127,6 +127,8 @@ surface during syncs and be deliberate when touching them.
 - `AnonymousObjectCreationExpression.cs` – `csharp_new_line_before_members_in_anonymous_types`
 - `QueryBody.cs` – `csharp_new_line_between_query_expression_clauses`
 - `../TrailingComma.cs` – `csharpier_use_prettier_style_trailing_commas`
+- `InvocationExpression.cs` – `csharpier_break_chained_member_access` (in
+  `PrintMemberChain`, the single funnel for every member-access chain)
 
 **Tests and docs**
 
@@ -153,6 +155,8 @@ surface during syncs and be deliberate when touching them.
 | `csharp_new_line_before_members_in_anonymous_types`       | `NewLineBeforeMembersInAnonymousTypes`     | `null`  |
 | `csharp_new_line_between_query_expression_clauses`        | `NewLineBetweenQueryExpressionClauses`     | `null`  |
 | `csharpier_use_prettier_style_trailing_commas`            | `UsePrettierStyleTrailingCommas`           | `true`  |
+| `csharpier_break_chained_member_access`                    | `BreakChainedMemberAccess`                 | `false` |
+| `csharpier_break_chained_member_access_minimum_links`      | `BreakChainedMemberAccessMinimumLinks`     | `2`     |
 | `csharpier_include_generated`                             | `IncludeGenerated`                         | `false` |
 | `csharpier_trim_initial_lines`                            | `TrimInitialLines`                         | `true`  |
 
@@ -185,6 +189,10 @@ Every option must be wired through all layers, otherwise it silently does nothin
    the `README.md` option list, and the table above
 
 Fork options are `.editorconfig`-only by design; `.csharpierrc` support is not required.
+The exception is `csharpier_break_chained_member_access` (+ `_minimum_links`), which is
+also readable from `.csharpierrc` as `breakChainedMemberAccess` /
+`breakChainedMemberAccessMinimumLinks` via `Src/CSharpier.Cli/Options/ConfigurationFileOptions.cs`
+(both `ConfigurationFileOptions` and `Override`).
 
 ## Build, test, and verify
 

@@ -12,6 +12,7 @@ This fork is for those, who don't like the default newline behavior (which waste
 - `csharp_new_line_before_members_in_anonymous_types`
 - `csharp_new_line_between_query_expression_clauses`
 - `csharpier_use_prettier_style_trailing_commas`
+- `csharpier_break_chained_member_access`, `csharpier_break_chained_member_access_minimum_links`
 - `csharpier_include_generated`, `csharpier_trim_initial_lines`
 
 See `docs/Configuration.md` for details.

@@ -17,6 +17,8 @@ public class CodeFormatterOptions
     public bool? NewLineBeforeMembersInAnonymousTypes { get; init; }
     public bool? NewLineBetweenQueryExpressionClauses { get; init; }
     public bool UsePrettierStyleTrailingCommas { get; init; } = true;
+    public bool BreakChainedMemberAccess { get; init; }
+    public int BreakChainedMemberAccessMinimumLinks { get; init; } = 2;
 
     internal PrinterOptions ToPrinterOptions()
     {
@@ -36,6 +38,8 @@ public class CodeFormatterOptions
             NewLineBeforeMembersInAnonymousTypes = this.NewLineBeforeMembersInAnonymousTypes,
             NewLineBetweenQueryExpressionClauses = this.NewLineBetweenQueryExpressionClauses,
             UsePrettierStyleTrailingCommas = this.UsePrettierStyleTrailingCommas,
+            BreakChainedMemberAccess = this.BreakChainedMemberAccess,
+            BreakChainedMemberAccessMinimumLinks = this.BreakChainedMemberAccessMinimumLinks,
         };
     }
 }

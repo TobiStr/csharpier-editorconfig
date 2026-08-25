@@ -33,6 +33,8 @@ internal class CSharpPrintingContext : BasePrintingContext
         public bool? NewLineBeforeMembersInAnonymousTypes { get; init; }
         public bool? NewLineBetweenQueryExpressionClauses { get; init; }
         public bool UsePrettierStyleTrailingCommas { get; init; } = true;
+        public bool BreakChainedMemberAccess { get; init; }
+        public int BreakChainedMemberAccessMinimumLinks { get; init; } = 2;
 
         public static PrintingContextOptions From(PrinterOptions printerOptions)
         {
@@ -49,6 +51,9 @@ internal class CSharpPrintingContext : BasePrintingContext
                 NewLineBetweenQueryExpressionClauses =
                     printerOptions.NewLineBetweenQueryExpressionClauses,
                 UsePrettierStyleTrailingCommas = printerOptions.UsePrettierStyleTrailingCommas,
+                BreakChainedMemberAccess = printerOptions.BreakChainedMemberAccess,
+                BreakChainedMemberAccessMinimumLinks =
+                    printerOptions.BreakChainedMemberAccessMinimumLinks,
             };
         }
     }

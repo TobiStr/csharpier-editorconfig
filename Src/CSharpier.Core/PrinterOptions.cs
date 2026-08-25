@@ -41,6 +41,8 @@ internal class PrinterOptions(
     public bool? NewLineBeforeMembersInAnonymousTypes { get; set; }
     public bool? NewLineBetweenQueryExpressionClauses { get; set; }
     public bool UsePrettierStyleTrailingCommas { get; set; } = true;
+    public bool BreakChainedMemberAccess { get; set; }
+    public int BreakChainedMemberAccessMinimumLinks { get; set; } = 2;
 
     public const int WidthUsedByTests = 100;
 

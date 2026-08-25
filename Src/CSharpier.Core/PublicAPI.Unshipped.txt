@@ -26,3 +26,7 @@ CSharpier.Core.CodeFormatterOptions.NewLineBetweenQueryExpressionClauses.get -> 
 CSharpier.Core.CodeFormatterOptions.NewLineBetweenQueryExpressionClauses.init -> void
 CSharpier.Core.CodeFormatterOptions.UsePrettierStyleTrailingCommas.get -> bool
 CSharpier.Core.CodeFormatterOptions.UsePrettierStyleTrailingCommas.init -> void
+CSharpier.Core.CodeFormatterOptions.BreakChainedMemberAccess.get -> bool
+CSharpier.Core.CodeFormatterOptions.BreakChainedMemberAccess.init -> void
+CSharpier.Core.CodeFormatterOptions.BreakChainedMemberAccessMinimumLinks.get -> int
+CSharpier.Core.CodeFormatterOptions.BreakChainedMemberAccessMinimumLinks.init -> void
