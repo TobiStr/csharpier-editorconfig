@@ -106,6 +106,14 @@ internal class EditorConfigSections
                 newLineBetweenQueryExpressionClauses;
         }
 
+        if (
+            resolvedConfiguration.UsePrettierStyleTrailingCommas is
+            { } usePrettierStyleTrailingCommas
+        )
+        {
+            printerOptions.UsePrettierStyleTrailingCommas = usePrettierStyleTrailingCommas;
+        }
+
         if (resolvedConfiguration.IncludeGenerated is { } includeGenerated)
         {
             printerOptions.IncludeGenerated = includeGenerated;
@@ -135,6 +143,7 @@ internal class EditorConfigSections
         public bool? NewLineBeforeMembersInObjectInitializers { get; }
         public bool? NewLineBeforeMembersInAnonymousTypes { get; }
         public bool? NewLineBetweenQueryExpressionClauses { get; }
+        public bool? UsePrettierStyleTrailingCommas { get; }
         public bool? IncludeGenerated { get; }
         public bool? TrimInitialLines { get; }
 
@@ -289,6 +298,19 @@ internal class EditorConfigSections
             {
                 this.NewLineBetweenQueryExpressionClauses =
                     newLineBetweenQueryExpressionClausesValue;
+            }
+
+            var usePrettierStyleTrailingCommas = sections
+                .LastOrDefault(o => o.UsePrettierStyleTrailingCommas != null)
+                ?.UsePrettierStyleTrailingCommas;
+            if (
+                bool.TryParse(
+                    usePrettierStyleTrailingCommas,
+                    out var usePrettierStyleTrailingCommasValue
+                )
+            )
+            {
+                this.UsePrettierStyleTrailingCommas = usePrettierStyleTrailingCommasValue;
             }
         }
     }

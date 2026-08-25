@@ -26,6 +26,8 @@ internal class Section(SectionData section, string directory)
         section.Keys["csharp_new_line_before_members_in_anonymous_types"];
     public string? NewLineBetweenQueryExpressionClauses { get; } =
         section.Keys["csharp_new_line_between_query_expression_clauses"];
+    public string? UsePrettierStyleTrailingCommas { get; } =
+        section.Keys["csharpier_use_prettier_style_trailing_commas"];
     public string? IncludeGenerated { get; } = section.Keys["csharpier_include_generated"];
     public string? TrimInitialLines { get; } = section.Keys["csharpier_trim_initial_lines"];
 

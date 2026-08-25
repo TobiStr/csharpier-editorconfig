@@ -843,6 +843,26 @@ csharp_new_line_between_query_expression_clauses = "
     }
 
     [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task Should_Support_EditorConfig_UsePrettierStyleTrailingCommas(bool value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.editorconfig",
+            @"
+[*]
+csharpier_use_prettier_style_trailing_commas = "
+                + value.ToString().ToLowerInvariant()
+                + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.UsePrettierStyleTrailingCommas.Should().Be(value);
+    }
+
+    [Test]
     public async Task Should_Support_EditorConfig_IncludeGenerated()
     {
         var context = new TestContext();
