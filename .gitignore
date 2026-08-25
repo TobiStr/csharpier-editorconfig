@@ -70,3 +70,6 @@ copilot.data.migration.ask.xml
 copilot.data.migration.ask2agent.xml
 copilot.data.migration.edit.xml
 .DS_Store
+
+# Tracked despite the user-level global ignore
+!AGENTS.md
