@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="../../Nuget/Build.props" />
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
     <PackageId>CSharpier.MsBuild</PackageId>
     <DevelopmentDependency>true</DevelopmentDependency>
     <CSharpierOutputDir>../CSharpier.Cli/bin/$(Configuration)/$(TargetFramework)</CSharpierOutputDir>
@@ -21,6 +21,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="build/*" PackagePath="build/" />
+    <Content Include="build/*" PackagePath="buildMultitargeting/" />
+    <Content Include="build/*" PackagePath="buildTransitive/" />
     <Content Include="$(CSharpierOutputDir)/**" PackagePath="tools/csharpier" />
   </ItemGroup>
 </Project>

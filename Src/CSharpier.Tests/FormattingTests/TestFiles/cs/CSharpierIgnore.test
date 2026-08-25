@@ -40,6 +40,20 @@ public class ClassName
         var formatMe =    true;
     }
     
+    void RangeIgnorWithBlankLines()
+    {
+        var x = 1;
+    
+        // csharpier-ignore-start
+        var y=1;
+        // csharpier-ignore-end
+
+
+        // csharpier-ignore-start
+        var z=1;
+        // csharpier-ignore-end
+    }
+    
     void MultipleStatements()
     {
         // csharpier-ignore-start
@@ -110,6 +124,29 @@ public class ClassName
             SomeProperty2 =     someValue
             // csharpier-ignore-end
         };
+    }
+
+    void SwitchStatements()
+    {
+        switch (1)
+        {
+            case 2:
+                // csharpier-ignore
+                var unformatted      = true;
+                var formatted        = true;
+                break;
+            case 3:
+                // csharpier-ignore-start
+                var unformatted_3    = true;
+                // csharpier-ignore-end
+                break;
+            case 4:
+                // csharpier-ignore
+                var unformatted_4 =
+@"Multiline
+value";
+                break;
+        }
     }
 }
 

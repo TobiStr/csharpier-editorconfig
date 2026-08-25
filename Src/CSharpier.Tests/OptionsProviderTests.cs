@@ -1,90 +1,87 @@
 using System.IO.Abstractions.TestingHelpers;
+using AwesomeAssertions;
 using CSharpier.Cli.Options;
 using CSharpier.Core;
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NUnit.Framework;
 
 namespace CSharpier.Tests;
 
-[TestFixture]
 public class OptionsProviderTests
 {
     [Test]
     public async Task Should_Return_Default_CSharp_Options_With_Empty_Json()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "{}");
+        context.WhenAFileExists("./.csharpierrc", "{}");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         ShouldHaveDefaultCSharpOptions(result);
     }
 
     [Test]
-    public async Task Should_Return_Default_Xml_Options_With_Empty_Json()
+    [Arguments("xml")]
+    [Arguments("xaml")]
+    public async Task Should_Return_Default_Xml_Options_With_Empty_Json(string extension)
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "{}");
+        context.WhenAFileExists("./.csharpierrc", "{}");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.xml");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test." + extension);
 
-        ShouldHaveDefaultXmlOptions(result);
+        ShouldHaveDefaultXmlOptions(result, extension);
     }
 
-    [TestCase("cs")]
-    [TestCase("csx")]
+    [Test]
+    [Arguments("cs")]
+    [Arguments("csx")]
     public async Task Should_Return_Default_Options_With_No_Config_File_And_Known_CSharp_Extension(
         string extension
     )
     {
         var context = new TestContext();
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/test." + extension
-        );
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test." + extension);
 
         ShouldHaveDefaultCSharpOptions(result);
     }
 
-    [TestCase("config")]
-    [TestCase("csproj")]
-    [TestCase("props")]
-    [TestCase("slnx")]
-    [TestCase("targets")]
-    [TestCase("xaml")]
-    [TestCase("xml")]
+    [Test]
+    [Arguments("config")]
+    [Arguments("csproj")]
+    [Arguments("props")]
+    [Arguments("slnx")]
+    [Arguments("targets")]
+    [Arguments("xaml")]
+    [Arguments("axaml")]
+    [Arguments("xml")]
     public async Task Should_Return_Default_Options_With_No_File_And_Known_Xml_Extension(
         string extension
     )
     {
         var context = new TestContext();
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/test." + extension
-        );
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test." + extension);
 
-        ShouldHaveDefaultXmlOptions(result);
+        ShouldHaveDefaultXmlOptions(result, extension);
     }
 
     [Test]
     public async Task Should_Throw_Exception_With_No_Config_File_And_Unknown_Extension()
     {
         var context = new TestContext();
-        var result = async () =>
-            await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.bad");
+        var result = async () => await context.CreateProviderAndGetOptionsFor(".", "./test.bad");
 
         await result.Should().ThrowAsync<Exception>();
     }
 
-    [TestCase(".csharpierrc")]
-    [TestCase(".csharpierrc.json")]
-    [TestCase(".csharpierrc.yaml")]
+    [Test]
+    [Arguments(".csharpierrc")]
+    [Arguments(".csharpierrc.json")]
+    [Arguments(".csharpierrc.yaml")]
     public async Task Should_Return_Default_Options_With_Empty_File(string fileName)
     {
         var context = new TestContext();
-        context.WhenAFileExists($"c:/test/{fileName}", string.Empty);
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        context.WhenAFileExists($"./{fileName}", string.Empty);
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         ShouldHaveDefaultCSharpOptions(result);
     }
@@ -94,66 +91,75 @@ public class OptionsProviderTests
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.csharpierrc.json",
-            @"{ 
-    ""printWidth"": 10, 
-    ""endOfLine"": ""crlf""
-}"
+            "./.csharpierrc.json",
+            """
+{ 
+    "printWidth": 10, 
+    "endOfLine": "crlf",
+    "xmlWhitespaceSensitivity": "ignore"
+}
+"""
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.Width.Should().Be(10);
         result.EndOfLine.Should().Be(EndOfLine.CRLF);
+        result.XmlWhitespaceSensitivity.Should().Be(XmlWhitespaceSensitivity.Ignore);
     }
 
-    [TestCase("yaml")]
-    [TestCase("yml")]
+    [Test]
+    [Arguments("yaml")]
+    [Arguments("yml")]
     public async Task Should_Return_Yaml_Extension_Options(string extension)
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            $"c:/test/.csharpierrc.{extension}",
-            @"
+            $"./.csharpierrc.{extension}",
+            """
 printWidth: 10
 endOfLine: crlf
-"
+xmlWhitespaceSensitivity: ignore
+"""
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.Width.Should().Be(10);
         result.EndOfLine.Should().Be(EndOfLine.CRLF);
+        result.XmlWhitespaceSensitivity.Should().Be(XmlWhitespaceSensitivity.Ignore);
     }
 
-    [TestCase("{ \"printWidth\": 10 }")]
-    [TestCase("printWidth: 10")]
+    [Test]
+    [Arguments("{ \"printWidth\": 10 }")]
+    [Arguments("printWidth: 10")]
     public async Task Should_Read_ExtensionLess_File(string contents)
     {
         var context = new TestContext();
-        context.WhenAFileExists($"c:/test/.csharpierrc", contents);
+        context.WhenAFileExists($"./.csharpierrc", contents);
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.Width.Should().Be(10);
     }
 
-    [TestCase("", "printWidth: 10")]
-    [TestCase("", "{ \"printWidth\": 10 }")]
-    [TestCase(".yml", "printWidth: 10")]
-    [TestCase(".yaml", "printWidth: 10")]
-    [TestCase(".json", "{ \"printWidth\": 10 }")]
+    [Test]
+    [Arguments("", "printWidth: 10")]
+    [Arguments("", "{ \"printWidth\": 10 }")]
+    [Arguments(".yml", "printWidth: 10")]
+    [Arguments(".yaml", "printWidth: 10")]
+    [Arguments(".json", "{ \"printWidth\": 10 }")]
     public async Task Should_Find_Configuration_In_Parent_Directory(
         string extension,
         string contents
     )
     {
         var context = new TestContext();
-        context.WhenAFileExists($"c:/test/.csharpierrc{extension}", contents);
+        context.WhenAFileExists($"./.csharpierrc{extension}", contents);
 
         var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test/subfolder",
-            "c:/test/subfolder/test.cs"
+            "./subfolder",
+            "./subfolder/test.cs"
         );
 
         result.Width.Should().Be(10);
@@ -163,12 +169,12 @@ endOfLine: crlf
     public async Task Should_Prefer_No_Extension()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "{ \"printWidth\": 1 }");
+        context.WhenAFileExists("./.csharpierrc", "{ \"printWidth\": 1 }");
 
-        context.WhenAFileExists("c:/test/.csharpierrc.json", "{ \"printWidth\": 2 }");
-        context.WhenAFileExists("c:/test/.csharpierrc.yaml", "printWidth: 3");
+        context.WhenAFileExists("./.csharpierrc.json", "{ \"printWidth\": 2 }");
+        context.WhenAFileExists("./.csharpierrc.yaml", "printWidth: 3");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.Width.Should().Be(1);
     }
@@ -177,9 +183,9 @@ endOfLine: crlf
     public async Task Should_Return_PrintWidth_With_Json()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "{ \"printWidth\": 10 }");
+        context.WhenAFileExists("./.csharpierrc", "{ \"printWidth\": 10 }");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.Width.Should().Be(10);
     }
@@ -188,9 +194,9 @@ endOfLine: crlf
     public async Task Should_Return_IndentSize_With_Json()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "{ \"indentSize\": 10 }");
+        context.WhenAFileExists("./.csharpierrc", "{ \"indentSize\": 10 }");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(10);
     }
@@ -199,9 +205,9 @@ endOfLine: crlf
     public async Task Should_Return_UseTabs_With_Json()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "{ \"useTabs\": true }");
+        context.WhenAFileExists("./.csharpierrc", "{ \"useTabs\": true }");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.UseTabs.Should().BeTrue();
     }
@@ -210,9 +216,9 @@ endOfLine: crlf
     public async Task Should_Return_PrintWidth_With_Yaml()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "printWidth: 10");
+        context.WhenAFileExists("./.csharpierrc", "printWidth: 10");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.Width.Should().Be(10);
     }
@@ -221,9 +227,9 @@ endOfLine: crlf
     public async Task Should_Return_IndentSize_With_Yaml()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "indentSize: 10");
+        context.WhenAFileExists("./.csharpierrc", "indentSize: 10");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(10);
     }
@@ -232,9 +238,9 @@ endOfLine: crlf
     public async Task Should_Return_UseTabs_With_Yaml()
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.csharpierrc", "useTabs: true");
+        context.WhenAFileExists("./.csharpierrc", "useTabs: true");
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.UseTabs.Should().BeTrue();
     }
@@ -244,21 +250,20 @@ endOfLine: crlf
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.csharpierrc",
+            "./.csharpierrc",
             """
-            overrides:
-                - files: "*.{override,another}"
-                  formatter: "csharp"
-                  indentSize: 2
-            """
+overrides:
+    - files: "*.{override,another}"
+      formatter: "csharp"
+      indentSize: 2
+      xmlWhitespaceSensitivity: ignore
+"""
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/test.override"
-        );
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.override");
 
         result.IndentSize.Should().Be(2);
+        result.XmlWhitespaceSensitivity.Should().Be(XmlWhitespaceSensitivity.Ignore);
     }
 
     [Test]
@@ -266,57 +271,76 @@ endOfLine: crlf
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.csharpierrc",
+            "./.csharpierrc",
             """
-            {
-                "overrides": [
-                    {
-                        "files": "*.{override,another}",
-                        "formatter": "csharp",
-                        "indentSize": 2
-                    }
-                ]
-            }
-            """
+{
+    "overrides": [
+        {
+            "files": "*.{override,another}",
+            "formatter": "csharp",
+            "indentSize": 2,
+            "xmlWhitespaceSensitivity": "ignore"
+        }
+    ]
+}
+"""
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/test.override"
-        );
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.override");
 
         result.IndentSize.Should().Be(2);
+        result.XmlWhitespaceSensitivity.Should().Be(XmlWhitespaceSensitivity.Ignore);
     }
 
-    [TestCase("cs")]
-    [TestCase("csx")]
+    [Test]
+    [Arguments("xml", 2)]
+    [Arguments("csharp", 4)]
+    public async Task Should_Return_Formatter_Default_IndentSize_For_Override_Without_IndentSize(
+        string formatter,
+        int expectedIndentSize
+    )
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.csharpierrc",
+            $"""
+overrides:
+    - files: "*.override"
+      formatter: "{formatter}"
+"""
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.override");
+
+        result.IndentSize.Should().Be(expectedIndentSize);
+    }
+
+    [Test]
+    [Arguments("cs")]
+    [Arguments("csx")]
     public async Task Should_Return_Default_CSharp_Options_With_Empty_EditorConfig(string extension)
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.editorconfig", string.Empty);
+        context.WhenAFileExists("./.editorconfig", string.Empty);
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/test." + extension
-        );
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test." + extension);
         ShouldHaveDefaultCSharpOptions(result);
     }
 
-    [TestCase("xml")]
-    [TestCase("csproj")]
-    [TestCase("props")]
-    [TestCase("targets")]
-    [TestCase("config")]
+    [Test]
+    [Arguments("xml")]
+    [Arguments("xaml")]
+    [Arguments("csproj")]
+    [Arguments("props")]
+    [Arguments("targets")]
+    [Arguments("config")]
     public async Task Should_Return_Default_Xml_Options_With_Empty_EditorConfig(string extension)
     {
         var context = new TestContext();
-        context.WhenAFileExists("c:/test/.editorconfig", string.Empty);
+        context.WhenAFileExists("./.editorconfig", string.Empty);
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/test." + extension
-        );
-        ShouldHaveDefaultXmlOptions(result);
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test." + extension);
+        ShouldHaveDefaultXmlOptions(result, extension);
     }
 
     [Test]
@@ -324,22 +348,25 @@ endOfLine: crlf
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_style = space
-indent_size = 2
-max_line_length = 10
-end_of_line = crlf
-"
+            "./.editorconfig",
+            """
+
+            [*]
+            indent_style = space
+            indent_size = 2
+            max_line_length = 10
+            end_of_line = crlf
+            csharpier_xml_whitespace_sensitivity = ignore
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.UseTabs.Should().BeFalse();
         result.IndentSize.Should().Be(2);
         result.Width.Should().Be(10);
         result.EndOfLine.Should().Be(EndOfLine.CRLF);
+        result.XmlWhitespaceSensitivity.Should().Be(XmlWhitespaceSensitivity.Ignore);
     }
 
     [Test]
@@ -347,23 +374,25 @@ end_of_line = crlf
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-# EditorConfig is awesome: https://EditorConfig.org
+            "./.editorconfig",
+            """
 
-# top-most EditorConfig file
-root = true
+            # EditorConfig is awesome: https://EditorConfig.org
 
-[*]
-indent_style = space
-indent_size = 2
-max_line_length = 10
-; Windows-style line endings
-end_of_line = crlf
-"
+            # top-most EditorConfig file
+            root = true
+
+            [*]
+            indent_style = space
+            indent_size = 2
+            max_line_length = 10
+            ; Windows-style line endings
+            end_of_line = crlf
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.UseTabs.Should().BeFalse();
         result.IndentSize.Should().Be(2);
@@ -376,17 +405,19 @@ end_of_line = crlf
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_size = 2
+            "./.editorconfig",
+            """
 
-[*]
-indent_size = 4
-"
+            [*]
+            indent_size = 2
+
+            [*]
+            indent_size = 4
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(4);
     }
@@ -396,15 +427,17 @@ indent_size = 4
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_size = 2
-indent_size = 4
-"
+            "./.editorconfig",
+            """
+
+            [*]
+            indent_size = 2
+            indent_size = 4
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(4);
     }
@@ -414,33 +447,38 @@ indent_size = 4
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*
-indent_size==
-"
+            "./.editorconfig",
+            """
+
+            [*
+            indent_size==
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(4);
     }
 
-    [TestCase("tab_width")]
-    [TestCase("indent_size")]
+    [Test]
+    [Arguments("tab_width")]
+    [Arguments("indent_size")]
     public async Task Should_Support_EditorConfig_Tabs(string propertyName)
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            $@"
-    [*]
-    indent_style = tab
-    {propertyName} = 2
-    "
+            "./.editorconfig",
+            $"""
+
+                [*]
+                indent_style = tab
+                {propertyName} = 2
+                
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.UseTabs.Should().BeTrue();
         result.IndentSize.Should().Be(2);
@@ -451,16 +489,18 @@ indent_size==
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-    [*]
-    indent_style = tab
-    indent_size = 1
-    tab_width = 3
-    "
+            "./.editorconfig",
+            """
+
+                [*]
+                indent_style = tab
+                indent_size = 1
+                tab_width = 3
+                
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.UseTabs.Should().BeTrue();
         result.IndentSize.Should().Be(3);
@@ -471,15 +511,17 @@ indent_size==
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-    [*]
-    indent_size = tab
-    tab_width = 3
-    "
+            "./.editorconfig",
+            """
+
+                [*]
+                indent_size = tab
+                tab_width = 3
+                
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(3);
     }
@@ -489,25 +531,29 @@ indent_size==
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/subfolder/.editorconfig",
-            @"
-    [*]
-    indent_size = 1
-    "
+            "./subfolder/.editorconfig",
+            """
+
+                [*]
+                indent_size = 1
+                
+            """
         );
 
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-    [*]
-    indent_size = 2
-    max_line_length = 10
-    "
+            "./.editorconfig",
+            """
+
+                [*]
+                indent_size = 2
+                max_line_length = 10
+                
+            """
         );
 
         var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test/subfolder",
-            "c:/test/subfolder/test.cs"
+            "./subfolder",
+            "./subfolder/test.cs"
         );
         result.IndentSize.Should().Be(1);
         result.Width.Should().Be(10);
@@ -518,24 +564,28 @@ indent_size==
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/subfolder/.editorconfig",
-            @"
-    [*]
-    indent_size = unset
-    "
+            "./subfolder/.editorconfig",
+            """
+
+                [*]
+                indent_size = unset
+                
+            """
         );
 
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-    [*]
-    indent_size = 2
-    "
+            "./.editorconfig",
+            """
+
+                [*]
+                indent_size = 2
+                
+            """
         );
 
         var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test/subfolder",
-            "c:/test/subfolder/test.cs"
+            "./subfolder",
+            "./subfolder/test.cs"
         );
         result.IndentSize.Should().Be(4);
     }
@@ -545,26 +595,30 @@ indent_size==
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/subfolder/.editorconfig",
-            @"
-    root = true
+            "./subfolder/.editorconfig",
+            """
 
-    [*]
-    indent_size = 2
-    "
+                root = true
+
+                [*]
+                indent_size = 2
+                
+            """
         );
 
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-    [*]
-    max_line_length = 2
-    "
+            "./.editorconfig",
+            """
+
+                [*]
+                max_line_length = 2
+                
+            """
         );
 
         var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test/subfolder",
-            "c:/test/subfolder/test.cs"
+            "./subfolder",
+            "./subfolder/test.cs"
         );
         result.Width.Should().Be(100);
     }
@@ -574,17 +628,19 @@ indent_size==
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_size = 1
+            "./.editorconfig",
+            """
 
-[*.cs]
-indent_size = 2
-"
+            [*]
+            indent_size = 1
+
+            [*.cs]
+            indent_size = 2
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.IndentSize.Should().Be(2);
     }
 
@@ -593,17 +649,19 @@ indent_size = 2
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_size = 1
+            "./.editorconfig",
+            """
 
-[*.{cs}]
-indent_size = 2
-"
+            [*]
+            indent_size = 1
+
+            [*.{cs}]
+            indent_size = 2
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.IndentSize.Should().Be(2);
     }
 
@@ -612,17 +670,19 @@ indent_size = 2
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_size = 1
+            "./.editorconfig",
+            """
 
-[*.{csx,cs}]
-indent_size = 2
-"
+            [*]
+            indent_size = 1
+
+            [*.{csx,cs}]
+            indent_size = 2
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.IndentSize.Should().Be(2);
     }
 
@@ -631,78 +691,84 @@ indent_size = 2
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             """
             [*]
             csharp_new_line_before_open_brace = types,methods,control_blocks
             """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result
             .NewLineBeforeOpenBrace.Should()
-            .Be(
-                BraceNewLine.Types
-                | BraceNewLine.Methods
-                | BraceNewLine.ControlBlocks
-            );
+            .Be(BraceNewLine.Types | BraceNewLine.Methods | BraceNewLine.ControlBlocks);
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
     public async Task Should_Support_EditorConfig_NewLineBeforeElse(bool value)
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             @"
 [*]
-csharp_new_line_before_else = " + value.ToString().ToLower() + @"
+csharp_new_line_before_else = "
+                + value.ToString().ToLowerInvariant()
+                + @"
 "
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.NewLineBeforeElse.Should().Be(value);
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
     public async Task Should_Support_EditorConfig_NewLineBeforeCatch(bool value)
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             @"
 [*]
-csharp_new_line_before_catch = " + value.ToString().ToLower() + @"
+csharp_new_line_before_catch = "
+                + value.ToString().ToLowerInvariant()
+                + @"
 "
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.NewLineBeforeCatch.Should().Be(value);
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
     public async Task Should_Support_EditorConfig_NewLineBeforeFinally(bool value)
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             @"
 [*]
-csharp_new_line_before_finally = " + value.ToString().ToLower() + @"
+csharp_new_line_before_finally = "
+                + value.ToString().ToLowerInvariant()
+                + @"
 "
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.NewLineBeforeFinally.Should().Be(value);
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
-    [TestCase(null)]
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    [Arguments(null)]
     public async Task Should_Support_EditorConfig_NewLineBeforeMembersInObjectInitializers(
         bool? value
     )
@@ -712,64 +778,88 @@ csharp_new_line_before_finally = " + value.ToString().ToLower() + @"
         if (value.HasValue)
         {
             context.WhenAFileExists(
-                "c:/test/.editorconfig",
+                "./.editorconfig",
                 @"
 [*]
-csharp_new_line_before_members_in_object_initializers = " + value.Value.ToString().ToLower() + @"
+csharp_new_line_before_members_in_object_initializers = "
+                    + value.Value.ToString().ToLowerInvariant()
+                    + @"
 "
             );
         }
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.NewLineBeforeMembersInObjectInitializers.Should().Be(value);
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
-    [TestCase(null)]
-    public async Task Should_Support_EditorConfig_NewLineBeforeMembersInAnonymousTypes(
-        bool? value
-    )
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    [Arguments(null)]
+    public async Task Should_Support_EditorConfig_NewLineBeforeMembersInAnonymousTypes(bool? value)
     {
         var context = new TestContext();
 
         if (value.HasValue)
         {
             context.WhenAFileExists(
-                "c:/test/.editorconfig",
+                "./.editorconfig",
                 @"
 [*]
-csharp_new_line_before_members_in_anonymous_types = " + value.Value.ToString().ToLower() + @"
+csharp_new_line_before_members_in_anonymous_types = "
+                    + value.Value.ToString().ToLowerInvariant()
+                    + @"
 "
             );
         }
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.NewLineBeforeMembersInAnonymousTypes.Should().Be(value);
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
-    [TestCase(null)]
-    public async Task Should_Support_EditorConfig_NewLineBetweenQueryExpressionClauses(
-        bool? value
-    )
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    [Arguments(null)]
+    public async Task Should_Support_EditorConfig_NewLineBetweenQueryExpressionClauses(bool? value)
     {
         var context = new TestContext();
 
         if (value.HasValue)
         {
             context.WhenAFileExists(
-                "c:/test/.editorconfig",
+                "./.editorconfig",
                 @"
 [*]
-csharp_new_line_between_query_expression_clauses = " + value.Value.ToString().ToLower() + @"
+csharp_new_line_between_query_expression_clauses = "
+                    + value.Value.ToString().ToLowerInvariant()
+                    + @"
 "
             );
         }
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.NewLineBetweenQueryExpressionClauses.Should().Be(value);
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task Should_Support_EditorConfig_UsePrettierStyleTrailingCommas(bool value)
+    {
+        var context = new TestContext();
+        context.WhenAFileExists(
+            "./.editorconfig",
+            @"
+[*]
+csharpier_use_prettier_style_trailing_commas = "
+                + value.ToString().ToLowerInvariant()
+                + @"
+"
+        );
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
+        result.UsePrettierStyleTrailingCommas.Should().Be(value);
     }
 
     [Test]
@@ -777,14 +867,14 @@ csharp_new_line_between_query_expression_clauses = " + value.Value.ToString().To
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             """
             [*.cs]
             csharpier_include_generated = true
             """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IncludeGenerated.Should().BeTrue();
     }
@@ -794,34 +884,36 @@ csharp_new_line_between_query_expression_clauses = " + value.Value.ToString().To
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             """
             [*.cs]
             csharpier_trim_initial_lines = false
             """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.TrimInitialLines.Should().BeFalse();
     }
 
     [Test]
-    public async Task Should_Return_IndentSize_For_Formatter_In_Editorconfig()
+    public async Task Should_Return_Overrides_In_Editorconfig()
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
+            "./.editorconfig",
             """
             [*.cst]
             indent_size = 2
             csharpier_formatter = csharp
+            csharpier_xml_whitespace_sensitivity = ignore
             """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cst");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cst");
 
         result.IndentSize.Should().Be(2);
+        result.XmlWhitespaceSensitivity.Should().Be(XmlWhitespaceSensitivity.Ignore);
     }
 
     [Test]
@@ -829,16 +921,18 @@ csharp_new_line_between_query_expression_clauses = " + value.Value.ToString().To
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*.cs]
-indent_size = 2
-"
+            "./.editorconfig",
+            """
+
+            [*.cs]
+            indent_size = 2
+
+            """
         );
 
         var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test/subfolder",
-            "c:/test/subfolder/test.cs"
+            "./subfolder",
+            "./subfolder/test.cs"
         );
         result.IndentSize.Should().Be(2);
     }
@@ -848,15 +942,17 @@ indent_size = 2
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*.cs]
-indent_size = 2
-"
-        );
-        context.WhenAFileExists("c:/test/.csharpierrc", "indentSize: 1");
+            "./.editorconfig",
+            """
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+            [*.cs]
+            indent_size = 2
+
+            """
+        );
+        context.WhenAFileExists("./.csharpierrc", "indentSize: 1");
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
         result.IndentSize.Should().Be(1);
     }
 
@@ -865,18 +961,17 @@ indent_size = 2
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/subfolder/.editorconfig",
-            @"
-[*.cs]
-indent_size = 2
-"
-        );
-        context.WhenAFileExists("c:/test/.csharpierrc", "indentSize: 1");
+            "./subfolder/.editorconfig",
+            """
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/subfolder/test.cs"
+            [*.cs]
+            indent_size = 2
+
+            """
         );
+        context.WhenAFileExists("./.csharpierrc", "indentSize: 1");
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./subfolder/test.cs");
         result.IndentSize.Should().Be(1);
     }
 
@@ -885,15 +980,17 @@ indent_size = 2
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*]
-indent_size = 2
-INVALID
-"
+            "./.editorconfig",
+            """
+
+            [*]
+            indent_size = 2
+            INVALID
+
+            """
         );
 
-        var result = await context.CreateProviderAndGetOptionsFor("c:/test", "c:/test/test.cs");
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./test.cs");
 
         result.IndentSize.Should().Be(2);
     }
@@ -903,27 +1000,28 @@ INVALID
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/subfolder/.editorconfig",
-            @"
-    [*]
-    indent_size = 2
-    "
+            "./subfolder/.editorconfig",
+            """
+
+                [*]
+                indent_size = 2
+                
+            """
         );
 
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-    [*]
-    indent_size = 1
-    "
+            "./.editorconfig",
+            """
+
+                [*]
+                indent_size = 1
+                
+            """
         );
 
-        context.WhenAFileExists("c:/test/.csharpierignore", "/subfolder/.editorconfig");
+        context.WhenAFileExists("./.csharpierignore", "/subfolder/.editorconfig");
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/subfolder/test.cs"
-        );
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./subfolder/test.cs");
         result.IndentSize.Should().Be(2);
     }
 
@@ -932,19 +1030,34 @@ INVALID
     {
         var context = new TestContext();
         context.WhenAFileExists(
-            "c:/test/.editorconfig",
-            @"
-[*.cs]
-indent_size = 2
-"
-        );
-        context.WhenAFileExists("c:/test/subfolder/.csharpierrc", "indentSize: 1");
+            "./.editorconfig",
+            """
 
-        var result = await context.CreateProviderAndGetOptionsFor(
-            "c:/test",
-            "c:/test/subfolder/test.cs"
+            [*.cs]
+            indent_size = 2
+
+            """
         );
+        context.WhenAFileExists("./subfolder/.csharpierrc", "indentSize: 1");
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./subfolder/test.cs");
         result.IndentSize.Should().Be(1);
+    }
+
+    [Test]
+    [Arguments("xml", XmlWhitespaceSensitivity.Strict)]
+    [Arguments("xaml", XmlWhitespaceSensitivity.Ignore)]
+    [Arguments("axaml", XmlWhitespaceSensitivity.Ignore)]
+    public async Task Should_Default_XmlWhitespaceSensitivity(
+        string fileExtension,
+        XmlWhitespaceSensitivity expectedXmlWhitespaceSensitivity
+    )
+    {
+        var context = new TestContext();
+
+        var result = await context.CreateProviderAndGetOptionsFor(".", "./file." + fileExtension);
+
+        result.XmlWhitespaceSensitivity.Should().Be(expectedXmlWhitespaceSensitivity);
     }
 
     private static void ShouldHaveDefaultCSharpOptions(PrinterOptions printerOptions)
@@ -955,26 +1068,33 @@ indent_size = 2
         printerOptions.EndOfLine.Should().Be(EndOfLine.Auto);
     }
 
-    private static void ShouldHaveDefaultXmlOptions(PrinterOptions printerOptions)
+    private static void ShouldHaveDefaultXmlOptions(PrinterOptions printerOptions, string extension)
     {
         printerOptions.Width.Should().Be(100);
         printerOptions.IndentSize.Should().Be(2);
         printerOptions.UseTabs.Should().BeFalse();
         printerOptions.EndOfLine.Should().Be(EndOfLine.Auto);
+        printerOptions
+            .XmlWhitespaceSensitivity.Should()
+            .Be(
+                extension is "xaml" or "axaml"
+                    ? XmlWhitespaceSensitivity.Ignore
+                    : XmlWhitespaceSensitivity.Strict
+            );
     }
 
     private sealed class TestContext
     {
         private readonly MockFileSystem fileSystem = new();
 
+        private readonly string uniqueRootPath = Path.Combine(
+            Path.GetTempPath(),
+            Guid.NewGuid().ToString()
+        );
+
         public void WhenAFileExists(string path, string contents)
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                path = path.Replace("c:", string.Empty);
-            }
-
-            this.fileSystem.AddFile(path, new MockFileData(contents));
+            this.fileSystem.AddFile(this.ResolvePath(path), new MockFileData(contents));
         }
 
         public async Task<PrinterOptions> CreateProviderAndGetOptionsFor(
@@ -982,20 +1102,8 @@ indent_size = 2
             string filePath
         )
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                directoryName = directoryName.Replace("c:", string.Empty);
-                filePath = filePath.Replace("c:", string.Empty);
-            }
-
-            directoryName = directoryName.Replace(
-                Path.AltDirectorySeparatorChar,
-                Path.DirectorySeparatorChar
-            );
-            filePath = filePath.Replace(
-                Path.AltDirectorySeparatorChar,
-                Path.DirectorySeparatorChar
-            );
+            directoryName = this.ResolvePath(directoryName);
+            filePath = this.ResolvePath(filePath);
 
             this.fileSystem.AddDirectory(directoryName);
             var provider = await OptionsProvider.Create(
@@ -1012,6 +1120,14 @@ indent_size = 2
                 ?? throw new Exception("PrinterOptions was null");
 
             return printerOptions;
+        }
+
+        private string ResolvePath(string path)
+        {
+            return (this.uniqueRootPath + path[1..]).Replace(
+                Path.AltDirectorySeparatorChar,
+                Path.DirectorySeparatorChar
+            );
         }
     }
 }

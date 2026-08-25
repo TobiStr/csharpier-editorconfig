@@ -1,0 +1,23 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us investigate.
+
+        **Before submitting**, please check:
+        - [ ] I've searched [existing issues](https://github.com/belav/csharpier/issues) to ensure this isn't a duplicate
+        - [ ] I'm not submitting a request for an option. Option requests will be closed without comment.
+        - [ ] I'm using the latest version of CSharpier `1.3.0` (determines HOW things are formatted)
+        - [ ] I'm using the latest version of my IDE's CSharpier plugin `>= 10.0.0` (communicates with whichever version of CSharpier is installed/configured)
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the feature request
+    validations:
+      required: true

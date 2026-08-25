@@ -11,7 +11,7 @@ internal static class AttributeLists
     public static Doc Print(
         SyntaxNode node,
         SyntaxList<AttributeListSyntax> attributeLists,
-        PrintingContext context
+        CSharpPrintingContext context
     )
     {
         if (attributeLists.Count == 0)
@@ -19,7 +19,7 @@ internal static class AttributeLists
             return Doc.Null;
         }
 
-        var docs = new ValueListBuilder<Doc>([null, null]);
+        var docs = new DocListBuilder(2);
         Doc separator = node
             is TypeParameterSyntax
                 or ParameterSyntax

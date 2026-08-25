@@ -6,20 +6,9 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class DelegateDeclaration
 {
-    public static Doc Print(DelegateDeclarationSyntax node, PrintingContext context)
+    public static Doc Print(DelegateDeclarationSyntax node, CSharpPrintingContext context)
     {
-        var docs = new ValueListBuilder<Doc>([
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-        ]);
+        var docs = new DocListBuilder(10);
         docs.Add(AttributeLists.Print(node, node.AttributeLists, context));
         docs.Add(Modifiers.PrintSorted(node.Modifiers, context));
         docs.Add(Token.PrintWithSuffix(node.DelegateKeyword, " ", context));

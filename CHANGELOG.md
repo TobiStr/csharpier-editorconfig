@@ -1,3 +1,330 @@
+# 1.3.0
+## Breaking Changes
+### Change xml formatting to return error when it runs into syntax error so it is consistent with c# [#1854](https://github.com/belav/csharpier/pull/1854)
+Previously CSharpier treated an invalid xml file as a warning instead of an error. This was inconsistent with how it treated c# files.  
+Invalid c# or xml files are not treated as errors.  
+The `--compilation-errors-as-warnings` argument has been renamed to `--syntax-errors-as-warnings` and can be used to return warnings instead of errors when encountering invalid files.
+
+## What's Changed
+
+### Feature: Configurable whitespace handling for xml [#1790](https://github.com/belav/csharpier/issues/1790)
+CSharpier now supports two types of xml whitespace formatting strict or ignore.  
+By default all xml except `xaml` or `axaml` is treated as strict whitespace. See [details](https://csharpier.com/docs/Configuration#xml-whitespace-sensitivity)
+
+### Feature: Move closing bracket for xml elements to the same line. [#1598](https://github.com/belav/csharpier/issues/1598)
+With strict xml whitespace handling, csharpier now keeps the closing bracket for an element on the same line instead of breaking it to a new line.
+```xml
+<!-- input & expected output -->
+<ElementWithAttribute Attribute="AttributeValue__________________"
+  >TextValue</ElementWithAttribute>
+
+<!-- 1.2.6 -->
+<ElementWithAttribute Attribute="AttributeValue__________________"
+  >TextValue</ElementWithAttribute
+>
+```
+### Feature: Support for csharpier-ignore with XML formatter [#1788](https://github.com/belav/csharpier/issues/1788)
+CSharpier now supports `csharpier-ignore` in xml files. See [details](https://csharpier.com/docs/Ignore#xml)
+
+### Feature: Add MSBuild transitive and multi-target support [#1833](https://github.com/belav/csharpier/issues/1833)
+CSharpier.MSBuild can now work as a transitive dependency.
+
+### Feature: allow checking formatting with cache [#1830](https://github.com/belav/csharpier/pull/1830)
+The `csharpier check` command now supports a `--use-cache` option.
+
+### Feature: remove dependency on Microsoft.AspNetCore.App [#1508](https://github.com/belav/csharpier/issues/1508)
+Previously CSharpier required that Microsoft.AspNetCore.App be installed. CSharpier has been modified to use an HttpListener when it is run using `server` to remove the need for this dependency.
+
+### Fix: csharpier-ignore comment removes linespaces before block [#1867](https://github.com/belav/csharpier/issues/1867)
+CSharpier was removing blank lines before csharpier-ignore comments in some cases
+```c#
+// input and expected output
+var x = 1;
+    
+// csharpier-ignore
+var y=1;
+
+/// 1.2.6
+var x = 1;
+// csharpier-ignore
+var y=1;
+```
+
+### Fix: Inconsistent indentation for raw string literals. [#1857](https://github.com/belav/csharpier/issues/1857)
+CSharpier was not consistently indenting raw string literals when they were inside of simple lambdas.
+```c#
+// input & expected output
+CallMethod(() =>
+{
+    var someString = """
+        SomeRawString
+        """;
+});
+
+// 1.2.6
+CallMethod(() =>
+{
+    var someString = """
+    SomeRawString
+    """;
+});
+
+```
+
+### Fix: case of modifier reorder with leading trivia [#1855](https://github.com/belav/csharpier/pull/1855)
+CSharpier was incorrectly reporting a syntax validation failure when it was reordering modifiers. This is now resolved.
+```c#
+// when this code is modified and the modifiers are reorderd it should not report a syntax validation failure.
+public class ClassName
+{
+    // SomeComment
+    override public int GetHashCode() => 0;
+}
+```
+
+### Fix: Xml breaks final element when it contains mixed content [#1841](https://github.com/belav/csharpier/issues/1841)
+CSharpier was breaking the end element in some cases when it should not be.
+```xml
+<!-- input & expected output -->
+<HtmlTypeElement
+  >Some long text to make things break <a href="http://url.com"
+    >url.com</a> more text.</HtmlTypeElement>
+
+<!-- 1.2.6 -->
+<HtmlTypeElement
+  >Some long text to make things break <a href="http://url.com"
+    >url.com</a
+  > more text.</HtmlTypeElement
+>
+
+```
+### Fix: Unable to ignore csharpier formatting within case statement group [#1824](https://github.com/belav/csharpier/issues/1824)
+CSharpier now supports `csharpier-ignore` comments within case statements.
+```c#
+switch (1)
+{
+    case 2:
+        // csharpier-ignore
+        var unformatted      = true;
+        break;
+}
+```
+
+### Fix: Incorrect formatting for simple lambda expression with comment [#1147](https://github.com/belav/csharpier/issues/1147)
+CSharpier was indenting code for a simple lambda with a leading comment.
+```c#
+// input & expected output
+this.Where___________________(
+    // Comment
+    x =>
+    {
+        return x;
+    }
+);
+
+// 1.2.6
+this.Where___________________(
+    // Comment
+    x =>
+{
+    return x;
+});
+
+```
+
+### Fix: Ignores files it shouldn't ignore when negative patterns are used [#1803](https://github.com/belav/csharpier/issues/1803)
+Fixed a couple more edgecases with CSharpier not handling negative ignore patterns the same way that git does
+
+### Fix: Tolerate missing directories when formatting from stdin [#1848](https://github.com/belav/csharpier/pull/1848)
+CSharpier was throwing a `DirectoryNotFoundException` if it were passed a path via `--stdin-path` with a directory that did not exist.
+
+### Fix: Stop .gitignore walk at git worktree boundary [#1860](https://github.com/belav/csharpier/pull/1860)
+When CSharpier walks up the target directory looking for `.gitignore` files it stops when encountering a `.git` directory. However in a git worktree there is no directory, `.git` is a file. This change ensures CSharpier stops when encountering a `.git` file so that CSharpier behaves the same in a worktree.
+
+### perf: cache `IgnoreWithBasePath` [#1758](https://github.com/belav/csharpier/pull/1758)
+### perf: fast comparison using `FullSpan` and source code [#1737](https://github.com/belav/csharpier/pull/1737)
+### perf: optimise `SyntaxNodeComparer` [#1730](https://github.com/belav/csharpier/pull/1730)
+### perf: set capacity of `List` in `MembersForcedLine` [#1709](https://github.com/belav/csharpier/pull/1709)
+### perf: use `Stack.Peek` to reduce `Pop` and `Push` churn [#1708](https://github.com/belav/csharpier/pull/1708)
+### perf: add `Doc.Null` check to `Argument` avoids `Concat` creation [#1706](https://github.com/belav/csharpier/pull/1706)
+### perf: use overload for `Any( SyntaxTriviaList` to prevent allocations [#1703](https://github.com/belav/csharpier/pull/1703)
+
+
+**Full Changelog**: https://github.com/belav/csharpier/compare/1.2.6...1.3.0
+# 1.2.6
+## What's Changed
+### [Bug]: XML with DOCTYPE results in "invalid xml" warning [#1809](https://github.com/belav/csharpier/issues/1809)
+CSharpier was not formatting xml that included a doctype and instead reporting that it was invalid xml.
+```xml
+<?xml version="1.0"?>
+<!DOCTYPE staff SYSTEM "staff.dtd"[
+    <!ENTITY ent1 "es">
+]>
+<staff></staff>
+```
+### [Bug]: Initializing a span using `stackalloc` leads to different formatting compared to `new` [#1808](https://github.com/belav/csharpier/issues/1808)
+When initializing a spacn using stackalloc, it was not being formatting consistently with other code
+```c#
+// input & expected output
+Span<int> metatable = new int[]
+{
+    00000000000000000000000001,
+    00000000000000000000000002,
+    00000000000000000000000003,
+};
+
+Span<int> metatable = stackalloc int[]
+{
+    00000000000000000000000001,
+    00000000000000000000000002,
+    00000000000000000000000003,
+};
+
+// 1.2.5
+Span<int> metatable = new int[]
+{
+    00000000000000000000000001,
+    00000000000000000000000002,
+    00000000000000000000000003,
+};
+
+Span<int> metatable =
+    stackalloc int[] {
+        00000000000000000000000001,
+        00000000000000000000000002,
+        00000000000000000000000003,
+    };
+
+```
+### [Bug]: Comments in otherwise empty object pattern disappear when formatting [#1804](https://github.com/belav/csharpier/issues/1804)
+CSharpier was removing comments if they were the only content of an object pattern.
+```c#
+// input & expected output
+var match = obj is {
+    //Property: 123
+};
+
+// 1.2.5
+var match = obj is { };
+```
+
+**Full Changelog**: https://github.com/belav/csharpier/compare/1.2.5...1.2.6
+# 1.2.5
+## What's Changed
+### Performance issue when running CLI in project with pnpm on Windows [#1781](https://github.com/belav/csharpier/issues/1781)
+**1.2.4 did not properly address this**
+
+The code to determine if there is a version of CSharpier.MsBuild referenced that does not match the version of CSharpier being run has been optimized to not look in node_modules or .git. This significantly speeds things up in some setups.
+
+
+**Full Changelog**: https://github.com/belav/csharpier/compare/1.2.4...1.2.5
+# 1.2.4
+## What's Changed
+### Weird enter in closing when formatting XAML TextBlock [#1785](https://github.com/belav/csharpier/issues/1785)
+CSharpier was breaking an end element to a new line when it did not need to.
+```xml
+<!-- input & expected output -->
+<root>
+  <TextBlock Foreground="DarkGray">
+    I saw the sign. When I opened up my eyes, I saw the sign.
+  </TextBlock>
+  <TextBlock>
+    I saw the sign. When I opened up my eyes, I saw the sign.
+  </TextBlock>
+</root>
+
+<!-- 1.2.3 -->
+<root>
+  <TextBlock Foreground="DarkGray">
+    I saw the sign. When I opened up my eyes, I saw the sign.
+  </TextBlock
+  >
+  <TextBlock>
+    I saw the sign. When I opened up my eyes, I saw the sign.
+  </TextBlock>
+</root>
+```
+### Order Modifiers (IDE0036) not formatting when code is preceded by a comment. [#1784](https://github.com/belav/csharpier/issues/1784)
+When incorrectly ordered modifiers were preceded by a comment they were not being reordered. Thanks go to @TimothyMakkison for the contribution
+```c#
+// input & 1.2.3
+
+// Comment
+required public int Prop1 { get; set; }
+
+// expected output
+// Comment
+public required int Prop1 { get; set; }
+```
+### Performance issue when running CLI in project with pnpm on Windows [#1781](https://github.com/belav/csharpier/issues/1781)
+The code to determine if there is a version of CSharpier.MsBuild referenced that does not match the version of CSharpier being run has been optimized to not look in node_modules or .git. This significantly speeds things up in some setups.
+
+**Full Changelog**: https://github.com/belav/csharpier/compare/1.2.3...1.2.4
+# 1.2.3
+## What's Changed
+### Large directories ignored in .gitignore significantly impact performance. [#1776](https://github.com/belav/csharpier/issues/1776)
+CSharpier was enumerating all files within all subdirectories and then determining if they should be formatted or not. That logic was optimized to only enumerate files in directories that are not ignored.
+
+**Full Changelog**: https://github.com/belav/csharpier/compare/1.2.2...1.2.3
+# 1.2.2
+## What's Changed
+
+### The null coalescing operator is grouped in an unexpected place [#1769](https://github.com/belav/csharpier/issues/1769)
+Null coalescing is now consistently broken thanks to a contribution from @ogaken-1
+
+```c#
+// input & expected output
+var x =
+    someValue.SomeCall().SomeProperty.SomeProperty
+    ?? someValue.SomeCall().SomeProperty.SomeProperty;
+
+var x =
+    someValue.SomeCall().SomeProperty?.SomeCall().SomeProperty
+    ?? someValue.SomeCall().SomeProperty?.SomeCall().SomeProperty;
+
+var x =
+    someValue.SomeCall().A_______.B_______.C_______
+    ?? someValue.SomeCall().A_______.B_______.C_______;
+
+// 1.2.1
+var x =
+    someValue.SomeCall().SomeProperty.SomeProperty ?? someValue
+        .SomeCall()
+        .SomeProperty.SomeProperty;
+
+var x =
+    someValue.SomeCall().SomeProperty?.SomeCall().SomeProperty ?? someValue
+        .SomeCall()
+        .SomeProperty?.SomeCall()
+        .SomeProperty;
+
+var x =
+    someValue.SomeCall().A_______.B_______.C_______ ?? someValue
+        .SomeCall()
+        .A_______.B_______.C_______;
+```
+### Xml formatter should not add a second line [#1760](https://github.com/belav/csharpier/issues/1760)
+When formatting an xml file with a declaration and extra blank line was being added.
+```xml
+<!-- input & expected output -->
+<?xml version="1.0" encoding="utf-8"?>
+
+<Element />
+
+<!-- 1.2.1 -->
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<Element />
+```
+
+### Git ignore patterns do not work the same as git [#1759](https://github.com/belav/csharpier/issues/1759)
+The handling of ignore patterns did not properly match how git handles them. The logic has been reworked and now has tests that compare it directly to git.
+
+### Fix server crash when launched without console [#1774](https://github.com/belav/csharpier/pull/1774)
+If a plugin launched `csharpier server` without a console it would crash. This has been resolved thanks to @rcdailey
+
+**Full Changelog**: https://github.com/belav/csharpier/compare/1.2.1...1.2.2
 # 1.2.1
 ## What's Changed
 ### Multiline comments are now formatted in a single line in XML format [#1747](https://github.com/belav/csharpier/issues/1747)
@@ -3641,6 +3968,12 @@ Thanks go to @pingzing
 - Implement Formatting Options with Configuration File [#10](https://github.com/belav/csharpier/issues/10)
 
 **Full Changelog**: https://github.com/belav/csharpier/compare/0.9.0...0.9.1
+
+
+
+
+
+
 
 
 

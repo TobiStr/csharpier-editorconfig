@@ -1,14 +1,11 @@
 using System.Text;
+using AwesomeAssertions;
 using CSharpier.Core;
 using CSharpier.Core.CSharp;
-using FluentAssertions;
 using Microsoft.CodeAnalysis;
-using NUnit.Framework;
 
 namespace CSharpier.Tests.Samples;
 
-[TestFixture]
-[Parallelizable(ParallelScope.All)]
 public class Samples
 {
     [Test]
@@ -30,7 +27,11 @@ public class Samples
         var code = await File.ReadAllTextAsync(file);
         var result = await CSharpFormatter.FormatAsync(
             code,
-            new PrinterOptions(Formatter.CSharp) { IncludeDocTree = true, IncludeAST = true }
+            new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
+            {
+                IncludeDocTree = true,
+                IncludeAST = true,
+            }
         );
 
         var syntaxNodeComparer = new SyntaxNodeComparer(

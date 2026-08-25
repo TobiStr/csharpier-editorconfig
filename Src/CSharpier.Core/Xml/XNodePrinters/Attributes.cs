@@ -1,12 +1,11 @@
 using System.Xml;
-using CSharpier.Core.CSharp.SyntaxPrinter;
 using CSharpier.Core.DocTypes;
 
 namespace CSharpier.Core.Xml.XNodePrinters;
 
 internal static class Attributes
 {
-    public static Doc Print(RawNode rawNode, PrintingContext context)
+    public static Doc Print(RawNode rawNode, XmlPrintingContext context)
     {
         if (rawNode.Attributes.Length == 0)
         {
@@ -42,7 +41,7 @@ internal static class Attributes
              */
             (
                 rawNode.Nodes.Count != 0
-                && Tag.NeedsToBorrowParentOpeningTagEndMarker(rawNode.Nodes.First())
+                && Tag.NeedsToBorrowParentOpeningTagEndMarker(rawNode.Nodes.First(), context)
             ) || doNotBreakAttributes
         )
         {

@@ -1,12 +1,9 @@
+using AwesomeAssertions;
 using CSharpier.Core;
 using CSharpier.Core.CSharp;
-using FluentAssertions;
-using NUnit.Framework;
 
 namespace CSharpier.Tests;
 
-[TestFixture]
-[Parallelizable(ParallelScope.All)]
 internal sealed class LineEndingTests
 {
     [Test]
@@ -25,7 +22,7 @@ four"";
         var codeWithLf = code.Replace("\r\n", "\n");
         var codeWithCrLf = codeWithLf.Replace("\n", "\r\n");
 
-        var printerOptions = new PrinterOptions(Formatter.CSharp)
+        var printerOptions = new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
         {
             EndOfLine = EndOfLine.Auto,
             Width = 80,
@@ -52,7 +49,7 @@ four"";
         var codeWithLf = code.Replace("\r\n", "\n");
         var codeWithCrLf = codeWithLf.Replace("\n", "\r\n");
 
-        var printerOptions = new PrinterOptions(Formatter.CSharp)
+        var printerOptions = new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
         {
             EndOfLine = EndOfLine.Auto,
             Width = 80,
@@ -63,8 +60,9 @@ four"";
         lfResult.Code.Should().Be(crLfResult.Code.Replace("\r\n", "\n"));
     }
 
-    [TestCase("\r\n", EndOfLine.LF)]
-    [TestCase("\n", EndOfLine.CRLF)]
+    [Test]
+    [Arguments("\r\n", EndOfLine.LF)]
+    [Arguments("\n", EndOfLine.CRLF)]
     public async Task LineEndings_In_Verbatim_String_Should_Respect_Options(
         string newLine,
         EndOfLine endOfLine
@@ -76,13 +74,42 @@ four"";
     string value = @""one{newLine}two"";
 }}
 ";
-        var printerOptions = new PrinterOptions(Formatter.CSharp) { EndOfLine = endOfLine };
+        var printerOptions = new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
+        {
+            EndOfLine = endOfLine,
+        };
         var result = await CSharpFormatter.FormatAsync(code, printerOptions);
         result.Code.Should().NotContain($"one{newLine}two");
     }
 
-    [TestCase("\\r\\n", EndOfLine.LF)]
-    [TestCase("\\n", EndOfLine.CRLF)]
+    [Test]
+    [Arguments(EndOfLine.LF)]
+    [Arguments(EndOfLine.CRLF)]
+    public async Task Ignored_Range_In_Separated_List_Should_Respect_LineEnding(EndOfLine endOfLine)
+    {
+        var code = """
+            var value = new()
+            {
+                // csharpier-ignore-start
+                First =     1,
+                Second =     2
+                // csharpier-ignore-end
+            };
+
+            """;
+
+        var printerOptions = new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
+        {
+            EndOfLine = endOfLine,
+        };
+        var result = await CSharpFormatter.FormatAsync(code, printerOptions);
+
+        result.Code.Should().Be(code.ReplaceLineEndings(endOfLine == EndOfLine.LF ? "\n" : "\r\n"));
+    }
+
+    [Test]
+    [Arguments("\\r\\n", EndOfLine.LF)]
+    [Arguments("\\n", EndOfLine.CRLF)]
     public async Task Escaped_LineEndings_In_Verbatim_String_Should_Remain(
         string escapedNewLine,
         EndOfLine endOfLine
@@ -94,7 +121,10 @@ four"";
     string value = @""one{escapedNewLine}two"";
 }}
 ";
-        var printerOptions = new PrinterOptions(Formatter.CSharp) { EndOfLine = endOfLine };
+        var printerOptions = new PrinterOptions(Formatter.CSharp, XmlWhitespaceSensitivity.Strict)
+        {
+            EndOfLine = endOfLine,
+        };
         var result = await CSharpFormatter.FormatAsync(code, printerOptions);
         result.Code.Should().Contain(escapedNewLine);
     }

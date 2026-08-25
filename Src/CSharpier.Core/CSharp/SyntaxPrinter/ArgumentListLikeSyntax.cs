@@ -2,6 +2,7 @@ using CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 using CSharpier.Core.DocTypes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace CSharpier.Core.CSharp.SyntaxPrinter;
 
@@ -11,11 +12,14 @@ internal static class ArgumentListLike
         SyntaxToken openParenToken,
         SeparatedSyntaxList<ArgumentSyntax> arguments,
         SyntaxToken closeParenToken,
-        PrintingContext context
+        CSharpPrintingContext context
     )
     {
         Doc? args;
-        if (arguments is [{ Expression: SimpleLambdaExpressionSyntax lambda1 }])
+        if (
+            arguments is [{ Expression: SimpleLambdaExpressionSyntax simpleLambda }]
+            && !simpleLambda.GetLeadingTrivia().Any(o => o.IsComment())
+        )
         {
             var groupId = context.GroupFor("LambdaArguments");
             args = Doc.Concat(
@@ -24,15 +28,15 @@ internal static class ArgumentListLike
                     Doc.Indent(
                         Doc.SoftLine,
                         Argument.PrintModifiers(arguments[0], context),
-                        SimpleLambdaExpression.PrintHead(lambda1, context)
+                        SimpleLambdaExpression.PrintHead(simpleLambda, context)
                     )
                 ),
                 Doc.IfBreak(
-                    Doc.Indent(Doc.Group(SimpleLambdaExpression.PrintBody(lambda1, context))),
-                    SimpleLambdaExpression.PrintBody(lambda1, context),
+                    Doc.Indent(Doc.Group(SimpleLambdaExpression.PrintBody(simpleLambda, context))),
+                    SimpleLambdaExpression.PrintBody(simpleLambda, context),
                     groupId
                 ),
-                lambda1.Body
+                simpleLambda.Body
                     is BlockSyntax
                         or ObjectCreationExpressionSyntax
                         or AnonymousObjectCreationExpressionSyntax
@@ -41,8 +45,15 @@ internal static class ArgumentListLike
             );
         }
         else if (
-            arguments is [{ Expression: ParenthesizedLambdaExpressionSyntax lambda }]
-            && lambda is { ParameterList.Parameters: [] }
+            arguments
+            is [
+                {
+                    Expression: ParenthesizedLambdaExpressionSyntax
+                    {
+                        ParameterList.Parameters: []
+                    } lambda
+                },
+            ]
         )
         {
             var groupId = context.GroupFor("LambdaArguments");
@@ -67,6 +78,21 @@ internal static class ArgumentListLike
         else if (arguments is [{ Expression: CollectionExpressionSyntax, NameColon: null }])
         {
             args = SeparatedSyntaxList.Print(arguments, Argument.Print, Doc.Line, context);
+        }
+        else if (
+            arguments.Count > 1
+            && arguments[^1].Expression is LambdaExpressionSyntax lastLambda
+            && !arguments
+                .Take(arguments.Count - 1)
+                .Any(o => o.Expression is AnonymousFunctionExpressionSyntax)
+            && !openParenToken
+                .Parent!.DescendantTrivia(
+                    TextSpan.FromBounds(openParenToken.SpanStart, lastLambda.ArrowToken.SpanStart)
+                )
+                .Any(o => o.IsComment() || o.IsDirective)
+        )
+        {
+            args = ArgumentListWithTrailingLambda.Print(arguments, lastLambda, context);
         }
         else if (arguments.Count > 0)
         {

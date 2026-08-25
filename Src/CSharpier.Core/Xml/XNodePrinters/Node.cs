@@ -1,47 +1,38 @@
+using System.Text.RegularExpressions;
 using System.Xml;
-using CSharpier.Core.CSharp.SyntaxPrinter;
 using CSharpier.Core.DocTypes;
 using CSharpier.Core.Utilities;
 
 namespace CSharpier.Core.Xml.XNodePrinters;
 
-internal static class Node
+internal static partial class Node
 {
-    internal static Doc Print(RawNode node, PrintingContext context)
+#if NET6_0_OR_GREATER
+    [GeneratedRegex("\\s+")]
+    private static partial Regex WhitespaceRegexGenerator();
+
+    private static readonly Regex WhitespaceRegex = WhitespaceRegexGenerator();
+#else
+    private static readonly Regex WhitespaceRegex = new("\\s+");
+#endif
+
+    internal static Doc Print(RawNode node, XmlPrintingContext context)
     {
         if (node.NodeType is XmlNodeType.Document)
         {
-            var result = new ValueListBuilder<Doc>(node.Nodes.Count * 2 + 1);
+            var result = new DocListBuilder(node.Nodes.Count * 2 + 1);
 
             foreach (var childNode in node.Nodes)
             {
-                result.Add(Print(childNode, context), Doc.HardLine);
+                result.Add(
+                    Print(childNode, context),
+                    childNode.NodeType is XmlNodeType.Whitespace ? Doc.Null : Doc.HardLine
+                );
             }
 
             result.Add(Doc.HardLine);
 
             return Doc.Concat(ref result);
-        }
-        if (node.NodeType == XmlNodeType.XmlDeclaration)
-        {
-            var version = node.Attributes.FirstOrDefault(o => o.Name == "version")?.Value;
-            var encoding = node.Attributes.FirstOrDefault(o => o.Name == "encoding")?.Value;
-            var standalone = node.Attributes.FirstOrDefault(o => o.Name == "standalone")?.Value;
-
-            var declaration = $"<?xml version=\"{version}\"";
-            if (!string.IsNullOrEmpty(encoding))
-            {
-                declaration += $" encoding=\"{encoding}\"";
-            }
-
-            if (!string.IsNullOrEmpty(standalone))
-            {
-                declaration += $" standalone=\"{standalone}\"";
-            }
-
-            declaration += "?>";
-
-            return declaration;
         }
 
         if (node.NodeType == XmlNodeType.DocumentType)
@@ -58,8 +49,8 @@ internal static class Node
         {
             List<Doc> doc =
             [
-                Tag.PrintOpeningTagPrefix(node),
-                GetTextValue(node),
+                Tag.PrintOpeningTagPrefix(node, context),
+                GetTextValue(node, context),
                 Tag.PrintClosingTagSuffix(node, context),
             ];
 
@@ -95,9 +86,32 @@ internal static class Node
         throw new Exception("Need to handle + " + node.NodeType);
     }
 
-    private static Doc GetTextValue(RawNode rawNode)
+    private static Doc GetTextValue(RawNode rawNode, XmlPrintingContext context)
     {
         var textValue = rawNode.Value;
+
+        if (rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Ignore)
+        {
+            if (rawNode.PreviousNode is null)
+            {
+                textValue = textValue.TrimStart();
+            }
+
+            if (rawNode.NextNode is null)
+            {
+                textValue = textValue.TrimEnd();
+            }
+
+            if (rawNode.Parent?.Nodes.Count == 1)
+            {
+                if (textValue.Length > 2)
+                {
+                    var innerValue = textValue[1..^1];
+                    textValue =
+                        textValue[0] + WhitespaceRegex.Replace(innerValue, " ") + textValue[^1];
+                }
+            }
+        }
 
         if (string.IsNullOrEmpty(textValue))
         {
@@ -111,7 +125,7 @@ internal static class Node
                 textValue = textValue[1..];
             }
 
-            if (textValue[0] is '\n')
+            if (textValue.Length > 0 && textValue[0] is '\n')
             {
                 textValue = textValue[1..];
             }

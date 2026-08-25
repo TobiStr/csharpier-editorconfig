@@ -53,14 +53,14 @@ internal class CSharpierServiceImplementation(ILogger logger)
 
             if (
                 GeneratedCodeUtilities.IsGeneratedCodeFile(fileName)
-                || await optionsProvider.IsIgnoredAsync(fileName, cancellationToken)
+                || await optionsProvider.IsFileIgnoredAsync(fileName, cancellationToken)
             )
             {
                 return new FormatFileResult(Status.Ignored);
             }
 
             var printerOptions = await optionsProvider.GetPrinterOptionsForAsync(
-                formatFileParameter.fileName,
+                fileName,
                 cancellationToken
             );
             if (printerOptions == null || printerOptions.Formatter is Formatter.Unknown)
@@ -68,19 +68,37 @@ internal class CSharpierServiceImplementation(ILogger logger)
                 return new FormatFileResult(Status.UnsupportedFile);
             }
 
-            // TODO #819 if there are compilation errors we need to do something here
             var result = await CodeFormatter.FormatAsync(
                 formatFileParameter.fileContents,
                 printerOptions,
                 cancellationToken
             );
 
-            if (result.CompilationErrors.Any())
+            if (result.ErrorDiagnostics.Any())
             {
                 return new FormatFileResult(Status.Failed)
                 {
                     errorMessage = "File had compilation errors and could not be formatted",
                 };
+            }
+
+            if (string.IsNullOrEmpty(result.Code))
+            {
+                if (!string.IsNullOrEmpty(result.WarningMessage))
+                {
+                    return new FormatFileResult(Status.Failed)
+                    {
+                        errorMessage = result.WarningMessage,
+                    };
+                }
+
+                if (!string.IsNullOrEmpty(result.FailureMessage))
+                {
+                    return new FormatFileResult(Status.Failed)
+                    {
+                        errorMessage = result.FailureMessage,
+                    };
+                }
             }
 
             return new FormatFileResult(Status.Formatted) { formattedFile = result.Code };

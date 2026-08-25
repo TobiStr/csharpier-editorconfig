@@ -7,6 +7,8 @@ public class CodeFormatterOptions
     public int IndentSize { get; init; } = 4;
     public EndOfLine EndOfLine { get; init; } = EndOfLine.Auto;
     public bool IncludeGenerated { get; init; }
+    public XmlWhitespaceSensitivity XmlWhitespaceSensitivity { get; init; } =
+        XmlWhitespaceSensitivity.Strict;
     public BraceNewLine NewLineBeforeOpenBrace { get; init; } = BraceNewLine.All;
     public bool NewLineBeforeElse { get; init; } = true;
     public bool NewLineBeforeCatch { get; init; } = true;
@@ -18,7 +20,7 @@ public class CodeFormatterOptions
 
     internal PrinterOptions ToPrinterOptions()
     {
-        return new(Formatter.CSharp)
+        return new(Formatter.CSharp, this.XmlWhitespaceSensitivity)
         {
             Width = this.Width,
             UseTabs = this.IndentStyle == IndentStyle.Tabs,
@@ -32,8 +34,7 @@ public class CodeFormatterOptions
             NewLineBeforeMembersInObjectInitializers =
                 this.NewLineBeforeMembersInObjectInitializers,
             NewLineBeforeMembersInAnonymousTypes = this.NewLineBeforeMembersInAnonymousTypes,
-            NewLineBetweenQueryExpressionClauses =
-                this.NewLineBetweenQueryExpressionClauses,
+            NewLineBetweenQueryExpressionClauses = this.NewLineBetweenQueryExpressionClauses,
             UsePrettierStyleTrailingCommas = this.UsePrettierStyleTrailingCommas,
         };
     }

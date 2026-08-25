@@ -151,9 +151,9 @@ If a list of paths is not supplied, then stdin is read as a file, formatted and 
     Skip writing changes. Generally used for testing to ensure csharpier doesn't throw any errors or cause syntax tree validation failures.
 
 
-- `--compilation-errors-as-warnings`
+- `--syntax-errors-as-warnings`
 
-    Treat compilation errors from files as warnings instead of errors.
+    Treat syntax errors from files as warnings instead of errors.
 
 ### Check
 `dotnet csharpier check [<directoryOrFile\>]`
@@ -166,10 +166,20 @@ By default this will return exit code 1 if there are unformatted files which is 
 
 Treat unformatted files as a warning instead of an error. If there are unformatted files they will be printed to the output as a warning and the process will return an exit code of 0.
 
+- `--use-cache`
+
+  This option will ensure that the cache to speed up formatting will be used when checking if a file is formatted.  
+  By default the following are used as cache keys and a file is only formatted if one of them has changed.
+    * CSharpier Version
+    * CSharpier Options
+    * Content of the file
+      <br/><br/>
+      The cache is stored at `[LocalApplicationData]/CSharpier/.formattingCache`.
+
 See the `format` command for descriptions of these additional options
 - `--include-generated`
 - `--no-msbuild-check`
-- `--compilation-errors-as-warnings`
+- `--syntax-errors-as-warnings`
 - `--config-path`
 - `--log-format`
 - `--log-level`

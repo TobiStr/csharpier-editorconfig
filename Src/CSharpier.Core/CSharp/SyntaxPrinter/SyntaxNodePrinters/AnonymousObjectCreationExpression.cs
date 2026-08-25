@@ -5,11 +5,13 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class AnonymousObjectCreationExpression
 {
-    public static Doc Print(AnonymousObjectCreationExpressionSyntax node, PrintingContext context)
+    public static Doc Print(
+        AnonymousObjectCreationExpressionSyntax node,
+        CSharpPrintingContext context
+    )
     {
         var alwaysBreak =
-            context.Options.NewLineBeforeMembersInAnonymousTypes
-            ?? (node.Initializers.Count >= 3);
+            context.Options.NewLineBeforeMembersInAnonymousTypes ?? (node.Initializers.Count >= 3);
 
         return Doc.Group(
             Token.PrintWithSuffix(node.NewKeyword, Doc.Line, context),

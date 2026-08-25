@@ -13,7 +13,10 @@ internal class Section(SectionData section, string directory)
     public string? MaxLineLength { get; } = section.Keys["max_line_length"];
     public string? EndOfLine { get; } = section.Keys["end_of_line"];
     public string? Formatter { get; } = section.Keys["csharpier_formatter"];
-    public string? NewLineBeforeOpenBrace { get; } = section.Keys["csharp_new_line_before_open_brace"];
+    public string? XmlWhitespaceSensitivity { get; } =
+        section.Keys["csharpier_xml_whitespace_sensitivity"];
+    public string? NewLineBeforeOpenBrace { get; } =
+        section.Keys["csharp_new_line_before_open_brace"];
     public string? NewLineBeforeElse { get; } = section.Keys["csharp_new_line_before_else"];
     public string? NewLineBeforeCatch { get; } = section.Keys["csharp_new_line_before_catch"];
     public string? NewLineBeforeFinally { get; } = section.Keys["csharp_new_line_before_finally"];
@@ -23,6 +26,8 @@ internal class Section(SectionData section, string directory)
         section.Keys["csharp_new_line_before_members_in_anonymous_types"];
     public string? NewLineBetweenQueryExpressionClauses { get; } =
         section.Keys["csharp_new_line_between_query_expression_clauses"];
+    public string? UsePrettierStyleTrailingCommas { get; } =
+        section.Keys["csharpier_use_prettier_style_trailing_commas"];
     public string? IncludeGenerated { get; } = section.Keys["csharpier_include_generated"];
     public string? TrimInitialLines { get; } = section.Keys["csharpier_trim_initial_lines"];
 

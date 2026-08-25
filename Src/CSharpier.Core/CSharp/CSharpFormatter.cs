@@ -129,7 +129,7 @@ public static class CSharpFormatter
                 compilationResult = new CodeFormatterResult
                 {
                     Code = syntaxTree.ToString(),
-                    CompilationErrors = diagnostics,
+                    ErrorDiagnostics = diagnostics,
                     AST = printerOptions.IncludeAST ? PrintAST(rootNode) : string.Empty,
                 };
 
@@ -148,26 +148,10 @@ public static class CSharpFormatter
         try
         {
             var lineEnding = PrinterOptions.GetLineEnding(syntaxTree.ToString(), printerOptions);
-            var printingContext = new PrintingContext
+            var printingContext = new CSharpPrintingContext
             {
-                Options = new PrintingContext.PrintingContextOptions
-                {
-                    LineEnding = lineEnding,
-                    IndentSize = printerOptions.IndentSize,
-                    UseTabs = printerOptions.UseTabs,
-                    NewLineBeforeOpenBrace = printerOptions.NewLineBeforeOpenBrace,
-                    NewLineBeforeElse = printerOptions.NewLineBeforeElse,
-                    NewLineBeforeCatch = printerOptions.NewLineBeforeCatch,
-                    NewLineBeforeFinally = printerOptions.NewLineBeforeFinally,
-                    NewLineBeforeMembersInObjectInitializers =
-                        printerOptions.NewLineBeforeMembersInObjectInitializers,
-                    NewLineBeforeMembersInAnonymousTypes =
-                        printerOptions.NewLineBeforeMembersInAnonymousTypes,
-                    NewLineBetweenQueryExpressionClauses =
-                        printerOptions.NewLineBetweenQueryExpressionClauses,
-                    UsePrettierStyleTrailingCommas =
-                        printerOptions.UsePrettierStyleTrailingCommas,
-                },
+                LineEnding = lineEnding,
+                Options = CSharpPrintingContext.PrintingContextOptions.From(printerOptions),
             };
             var document = Node.Print(rootNode, printingContext);
             var formattedCode = DocPrinter.DocPrinter.Print(document, printerOptions, lineEnding);
@@ -186,26 +170,10 @@ public static class CSharpFormatter
                     return result;
                 }
 
-                var formattingContext2 = new PrintingContext
+                var formattingContext2 = new CSharpPrintingContext
                 {
-                    Options = new PrintingContext.PrintingContextOptions
-                    {
-                        LineEnding = lineEnding,
-                        IndentSize = printerOptions.IndentSize,
-                        UseTabs = printerOptions.UseTabs,
-                        NewLineBeforeOpenBrace = printerOptions.NewLineBeforeOpenBrace,
-                        NewLineBeforeElse = printerOptions.NewLineBeforeElse,
-                        NewLineBeforeCatch = printerOptions.NewLineBeforeCatch,
-                        NewLineBeforeFinally = printerOptions.NewLineBeforeFinally,
-                        NewLineBeforeMembersInObjectInitializers =
-                            printerOptions.NewLineBeforeMembersInObjectInitializers,
-                        NewLineBeforeMembersInAnonymousTypes =
-                            printerOptions.NewLineBeforeMembersInAnonymousTypes,
-                        NewLineBetweenQueryExpressionClauses =
-                            printerOptions.NewLineBetweenQueryExpressionClauses,
-                        UsePrettierStyleTrailingCommas =
-                            printerOptions.UsePrettierStyleTrailingCommas,
-                    },
+                    LineEnding = lineEnding,
+                    Options = CSharpPrintingContext.PrintingContextOptions.From(printerOptions),
                 };
                 document = Node.Print(
                     await syntaxTree.GetRootAsync(cancellationToken),

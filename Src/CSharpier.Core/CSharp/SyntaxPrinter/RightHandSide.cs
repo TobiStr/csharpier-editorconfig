@@ -1,4 +1,5 @@
 using CSharpier.Core.DocTypes;
+using CSharpier.Core.Utilities;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -11,7 +12,7 @@ internal static class RightHandSide
         Doc leftDoc,
         Doc operatorDoc,
         ExpressionSyntax rightNode,
-        PrintingContext context
+        CSharpPrintingContext context
     )
     {
         var layout = DetermineLayout(leftNode, rightNode);
@@ -126,7 +127,7 @@ internal static class RightHandSide
             or InterpolatedStringExpressionSyntax
             or IsPatternExpressionSyntax
             or LiteralExpressionSyntax
-            or StackAllocArrayCreationExpressionSyntax
+            or StackAllocArrayCreationExpressionSyntax { Initializer: null }
             or QueryExpressionSyntax => Layout.BreakAfterOperator,
             _ => Layout.Fluid,
         };

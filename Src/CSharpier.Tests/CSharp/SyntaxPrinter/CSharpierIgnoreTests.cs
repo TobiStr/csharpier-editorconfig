@@ -1,11 +1,9 @@
+using AwesomeAssertions;
 using CSharpier.Core;
 using CSharpier.Core.CSharp.SyntaxPrinter;
-using FluentAssertions;
-using NUnit.Framework;
 
 namespace CSharpier.Tests.CSharp.SyntaxPrinter;
 
-[TestFixture]
 public class CSharpierIgnoreTests
 {
     [Test]
@@ -67,16 +65,7 @@ public string Example
         return CSharpierIgnore
             .PrintWithoutFormatting(
                 code,
-                new PrintingContext
-                {
-                    Options = new PrintingContext.PrintingContextOptions
-                    {
-                        LineEnding = Environment.NewLine,
-                        IndentSize = 4,
-                        UseTabs = false,
-                        NewLineBeforeOpenBrace = BraceNewLine.All,
-                    },
-                }
+                new CSharpPrintingContext { LineEnding = Environment.NewLine }
             )
             .ReplaceLineEndings("\n");
     }

@@ -10,9 +10,9 @@ internal static class SeparatedSyntaxList
 {
     public static Doc Print<T>(
         SeparatedSyntaxList<T> list,
-        Func<T, PrintingContext, Doc> printFunc,
+        Func<T, CSharpPrintingContext, Doc> printFunc,
         Doc afterSeparator,
-        PrintingContext context,
+        CSharpPrintingContext context,
         int startingIndex = 0
     )
         where T : SyntaxNode
@@ -22,9 +22,9 @@ internal static class SeparatedSyntaxList
 
     public static Doc PrintWithTrailingComma<T>(
         SeparatedSyntaxList<T> list,
-        Func<T, PrintingContext, Doc> printFunc,
+        Func<T, CSharpPrintingContext, Doc> printFunc,
         Doc afterSeparator,
-        PrintingContext context,
+        CSharpPrintingContext context,
         SyntaxToken? closingToken = null
     )
         where T : SyntaxNode
@@ -38,19 +38,16 @@ internal static class SeparatedSyntaxList
     [SkipLocalsInit]
     private static Doc Print<T>(
         in SeparatedSyntaxList<T> list,
-        Func<T, PrintingContext, Doc> printFunc,
+        Func<T, CSharpPrintingContext, Doc> printFunc,
         Doc afterSeparator,
-        PrintingContext context,
+        CSharpPrintingContext context,
         int startingIndex,
         SyntaxToken? closingToken
     )
         where T : SyntaxNode
     {
-        var docs =
-            list.Count <= 3
-                ? new ValueListBuilder<Doc>([null, null, null, null, null, null, null, null])
-                : new ValueListBuilder<Doc>(list.Count * 3);
-        var unFormattedCode = new ValueListBuilder<char>(stackalloc char[64]);
+        var docs = list.Count <= 3 ? new DocListBuilder(8) : new DocListBuilder(list.Count * 3);
+        var unFormattedCode = new StringBuilder();
         var printUnformatted = false;
         for (var x = startingIndex; x < list.Count; x++)
         {
@@ -58,7 +55,7 @@ internal static class SeparatedSyntaxList
 
             if (Token.HasLeadingCommentMatching(member, CSharpierIgnore.IgnoreEndRegex))
             {
-                docs.Add(unFormattedCode.AsSpan().Trim().ToString());
+                docs.Add(unFormattedCode.ToString().Trim());
                 unFormattedCode.Clear();
                 printUnformatted = false;
             }
@@ -77,7 +74,7 @@ internal static class SeparatedSyntaxList
                 if (x < list.SeparatorCount)
                 {
                     unFormattedCode.Append(list.GetSeparator(x).ToFullString().Trim());
-                    unFormattedCode.Append(Environment.NewLine);
+                    unFormattedCode.Append(context.LineEnding);
                 }
 
                 continue;
@@ -147,11 +144,10 @@ internal static class SeparatedSyntaxList
 
         if (unFormattedCode.Length > 0)
         {
-            docs.Add(unFormattedCode.AsSpan().Trim().ToString());
+            docs.Add(unFormattedCode.ToString().Trim());
         }
 
         var output = Doc.Concat(ref docs);
-        unFormattedCode.Dispose();
         docs.Dispose();
 
         return output;

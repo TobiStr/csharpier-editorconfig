@@ -5,7 +5,7 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class Block
 {
-    public static Doc Print(BlockSyntax node, PrintingContext context)
+    public static Doc Print(BlockSyntax node, CSharpPrintingContext context)
     {
         if (
             node.Statements.Count == 0
@@ -41,7 +41,12 @@ internal static class Block
         }
 
         Doc leading;
-        if (node.Parent is ParenthesizedLambdaExpressionSyntax or BlockSyntax or GlobalStatementSyntax)
+        if (
+            node.Parent
+            is ParenthesizedLambdaExpressionSyntax
+                or BlockSyntax
+                or GlobalStatementSyntax
+        )
         {
             leading = Doc.Null;
         }

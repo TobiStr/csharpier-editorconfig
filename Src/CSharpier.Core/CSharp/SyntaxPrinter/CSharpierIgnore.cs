@@ -29,10 +29,22 @@ internal static partial class CSharpierIgnore
     public static readonly Regex IgnoreEndRegex = IgnoreEndRegexGenerator();
     public static readonly Regex WhiteSpaceLineEndingsRegex = WhiteSpaceLineEndingsGenerator();
 #else
-    private static readonly Regex IgnoreRegex = new("^// csharpier-ignore($| -)");
-    public static readonly Regex IgnoreStartRegex = new("^// csharpier-ignore-start($| -)");
-    public static readonly Regex IgnoreEndRegex = new("^// csharpier-ignore-end($| -)");
-    public static readonly Regex WhiteSpaceLineEndingsRegex = new(@"[\t\v\f ]*(\r\n?|\n)");
+    private static readonly Regex IgnoreRegex = new(
+        "^// csharpier-ignore($| -)",
+        RegexOptions.Compiled
+    );
+    public static readonly Regex IgnoreStartRegex = new(
+        "^// csharpier-ignore-start($| -)",
+        RegexOptions.Compiled
+    );
+    public static readonly Regex IgnoreEndRegex = new(
+        "^// csharpier-ignore-end($| -)",
+        RegexOptions.Compiled
+    );
+    public static readonly Regex WhiteSpaceLineEndingsRegex = new(
+        @"[\t\v\f ]*(\r\n?|\n)",
+        RegexOptions.Compiled
+    );
 #endif
 
     public static bool HasIgnoreComment(SyntaxNode syntaxNode) =>
@@ -62,30 +74,41 @@ internal static partial class CSharpierIgnore
                     or SyntaxKind.Block
                     or SyntaxKind.CompilationUnit
                     or SyntaxKind.NamespaceDeclaration
+                    or SyntaxKind.SwitchSection
             && HasIgnoreComment(syntaxNode);
     }
 
     [SkipLocalsInit]
     public static List<Doc> PrintNodesRespectingRangeIgnore<T>(
         SyntaxList<T> list,
-        PrintingContext context
+        CSharpPrintingContext context
     )
         where T : SyntaxNode
     {
         var statements = new List<Doc>();
-        var unFormattedCode = new ValueListBuilder<char>(stackalloc char[64]);
+        var unFormattedCode = new StringBuilder();
         var printUnformatted = false;
+        SyntaxNode? firstUnformattedNode = null;
 
         foreach (var node in list)
         {
             if (Token.HasLeadingCommentMatching(node, IgnoreEndRegex))
             {
-                statements.Add(unFormattedCode.AsSpan().Trim().ToString());
+                statements.Add(
+                    firstUnformattedNode is StatementSyntax statementSyntax
+                        ? Doc.Concat(
+                            ExtraNewLines.Print(statementSyntax),
+                            unFormattedCode.ToString().Trim()
+                        )
+                        : unFormattedCode.ToString().Trim()
+                );
                 unFormattedCode.Clear();
+                firstUnformattedNode = null;
                 printUnformatted = false;
             }
             else if (Token.HasLeadingCommentMatching(node, IgnoreStartRegex))
             {
+                firstUnformattedNode ??= node;
                 printUnformatted = true;
             }
 
@@ -101,22 +124,30 @@ internal static partial class CSharpierIgnore
 
         if (unFormattedCode.Length > 0)
         {
-            statements.Add(unFormattedCode.AsSpan().Trim().ToString());
+            statements.Add(
+                firstUnformattedNode is StatementSyntax statementSyntax
+                    ? Doc.Concat(
+                        ExtraNewLines.Print(statementSyntax),
+                        unFormattedCode.ToString().Trim()
+                    )
+                    : unFormattedCode.ToString().Trim()
+            );
         }
-
-        unFormattedCode.Dispose();
 
         return statements;
     }
 
-    public static string PrintWithoutFormatting(SyntaxNode syntaxNode, PrintingContext context)
+    public static string PrintWithoutFormatting(
+        SyntaxNode syntaxNode,
+        CSharpPrintingContext context
+    )
     {
         return PrintWithoutFormatting(syntaxNode.GetText().ToString(), context);
     }
 
-    public static string PrintWithoutFormatting(string code, PrintingContext context)
+    public static string PrintWithoutFormatting(string code, CSharpPrintingContext context)
     {
         // trim trailing whitespace + replace only existing line endings
-        return WhiteSpaceLineEndingsRegex.Replace(code, context.Options.LineEnding);
+        return WhiteSpaceLineEndingsRegex.Replace(code, context.LineEnding);
     }
 }

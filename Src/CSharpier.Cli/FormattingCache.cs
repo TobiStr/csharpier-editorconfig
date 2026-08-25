@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.IO.Hashing;
-using System.Text;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using CSharpier.Cli.Options;
 using CSharpier.Core.Utilities;
@@ -32,13 +32,13 @@ internal static class FormattingCacheFactory
         CancellationToken cancellationToken
     )
     {
-        if (commandLineOptions.NoCache || commandLineOptions.Check)
+        if (commandLineOptions.NoCache)
         {
             return NullCache;
         }
 
         var cacheDictionary = new ConcurrentDictionary<string, string>();
-        if (File.Exists(CacheFilePath))
+        if (fileSystem.File.Exists(CacheFilePath))
         {
             // in my testing we don't normally have to wait more than a couple MS, but just in case
             const int attempts = 20;
@@ -47,7 +47,10 @@ internal static class FormattingCacheFactory
             {
                 try
                 {
-                    content = await File.ReadAllTextAsync(CacheFilePath, cancellationToken);
+                    content = await fileSystem.File.ReadAllTextAsync(
+                        CacheFilePath,
+                        cancellationToken
+                    );
                     break;
                 }
                 catch (Exception)
@@ -76,7 +79,7 @@ internal static class FormattingCacheFactory
                 // file must be bad json
                 try
                 {
-                    File.Delete(CacheFilePath);
+                    fileSystem.File.Delete(CacheFilePath);
                 }
                 catch (Exception)
                 {
@@ -99,10 +102,9 @@ internal static class FormattingCacheFactory
 
         public bool CanSkipFormatting(FileToFormatInfo fileToFormatInfo)
         {
-            var currentHash = Hash(fileToFormatInfo.FileContents) + this.optionsHash;
             if (cacheDictionary.TryGetValue(fileToFormatInfo.Path, out var cachedHash))
             {
-                if (currentHash == cachedHash)
+                if (this.HashMatches(cachedHash, fileToFormatInfo.FileContents))
                 {
                     return true;
                 }
@@ -111,6 +113,15 @@ internal static class FormattingCacheFactory
             }
 
             return false;
+        }
+
+        private bool HashMatches(string cachedHash, string fileContents)
+        {
+            var contentHash = Hash(fileContents);
+
+            return cachedHash.Length == contentHash.Length + this.optionsHash.Length
+                && cachedHash.AsSpan(0, contentHash.Length).SequenceEqual(contentHash.AsSpan())
+                && cachedHash.AsSpan(contentHash.Length).SequenceEqual(this.optionsHash.AsSpan());
         }
 
         public void CacheResult(string code, FileToFormatInfo fileToFormatInfo)
@@ -124,10 +135,13 @@ internal static class FormattingCacheFactory
             return Hash($"{csharpierVersion}_${optionsProvider.Serialize()}");
         }
 
+        // hashes the utf-16 payload in place - transcoding to ascii first would both copy the whole
+        // file and collapse every non-ascii character to '?', letting two different files collide
         private static string Hash(string input)
         {
-            var result = XxHash32.Hash(Encoding.ASCII.GetBytes(input));
-            return Convert.ToHexString(result);
+            Span<byte> destination = stackalloc byte[sizeof(uint)];
+            XxHash32.Hash(MemoryMarshal.AsBytes(input.AsSpan()), destination);
+            return Convert.ToHexString(destination);
         }
 
         public async Task ResolveAsync(CancellationToken cancellationToken)

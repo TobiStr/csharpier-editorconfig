@@ -6,9 +6,9 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class SwitchSection
 {
-    public static Doc Print(SwitchSectionSyntax node, PrintingContext context)
+    public static Doc Print(SwitchSectionSyntax node, CSharpPrintingContext context)
     {
-        var docs = new ValueListBuilder<Doc>([null, null]);
+        var docs = new DocListBuilder(2);
         docs.Add(Doc.Join(Doc.HardLine, node.Labels.Select(o => Node.Print(o, context))));
         if (node.Statements is [BlockSyntax blockSyntax])
         {
@@ -16,13 +16,14 @@ internal static class SwitchSection
         }
         else
         {
+            var statements = CSharpierIgnore.PrintNodesRespectingRangeIgnore(
+                node.Statements,
+                context
+            );
             docs.Add(
                 Doc.Indent(
                     node.Statements.First() is BlockSyntax ? Doc.Null : Doc.HardLine,
-                    Doc.Join(
-                        Doc.HardLine,
-                        node.Statements.Select(o => Node.Print(o, context)).ToArray()
-                    )
+                    Doc.Join(Doc.HardLine, statements)
                 )
             );
         }

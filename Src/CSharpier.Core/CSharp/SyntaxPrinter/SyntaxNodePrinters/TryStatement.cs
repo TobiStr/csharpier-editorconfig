@@ -6,9 +6,9 @@ namespace CSharpier.Core.CSharp.SyntaxPrinter.SyntaxNodePrinters;
 
 internal static class TryStatement
 {
-    public static Doc Print(TryStatementSyntax node, PrintingContext context)
+    public static Doc Print(TryStatementSyntax node, CSharpPrintingContext context)
     {
-        var docs = new ValueListBuilder<Doc>([null, null, null, null, null, null, null, null]);
+        var docs = new DocListBuilder(8);
         docs.Add(ExtraNewLines.Print(node));
         docs.Add(AttributeLists.Print(node, node.AttributeLists, context));
         docs.Add(Token.Print(node.TryKeyword, context));

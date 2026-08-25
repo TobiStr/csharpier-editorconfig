@@ -1,13 +1,19 @@
 using System.Xml;
-using CSharpier.Core.CSharp.SyntaxPrinter;
 using CSharpier.Core.DocTypes;
 
 namespace CSharpier.Core.Xml.XNodePrinters;
 
 internal static class Element
 {
-    internal static Doc Print(RawNode rawNode, PrintingContext context)
+    internal static Doc Print(RawNode rawNode, XmlPrintingContext context)
     {
+        if (rawNode.PreviousNode?.CSharpierIgnoreType is CSharpierIgnoreType.Ignore)
+        {
+            return context
+                .NormalizedXml[rawNode.StartPosition..rawNode.EndPosition]
+                .Replace("\n", context.LineEnding);
+        }
+
         var shouldHugContent = false;
         var attrGroupId = context.GroupFor("element-attr-group-id");
 
@@ -34,19 +40,27 @@ internal static class Element
             }
 
             if (
-                rawNode.Nodes.FirstOrDefault() is
-                { NodeType: XmlNodeType.Text, Value: ['\n', ..] or ['\r', ..] }
+                rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Strict
+                && rawNode.Nodes.FirstOrDefault()
+                    is { NodeType: XmlNodeType.Text, Value: ['\n', ..] or ['\r', ..] }
             )
             {
                 return Doc.LiteralLine;
             }
 
-            if (rawNode.Attributes.Length == 0 && rawNode.Nodes is [{ NodeType: XmlNodeType.Text }])
+            if (
+                rawNode.Attributes.Length == 0
+                && rawNode.Nodes is [{ NodeType: XmlNodeType.Text }]
+                && rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Strict
+            )
             {
                 return Doc.Null;
             }
 
-            if (rawNode.Nodes.Any(o => o.NodeType is XmlNodeType.Text && o.Value.Contains('\n')))
+            if (
+                rawNode.Nodes.Count > 1
+                && rawNode.Nodes.Any(o => o.NodeType is XmlNodeType.Text && o.Value.Contains('\n'))
+            )
             {
                 return Doc.HardLine;
             }
@@ -62,10 +76,32 @@ internal static class Element
                 return Doc.IfBreak(Doc.SoftLine, "", attrGroupId);
             }
 
-            if (rawNode.Attributes.Length == 0 && rawNode.Nodes is [{ NodeType: XmlNodeType.Text }])
+            if (
+                rawNode.Nodes.LastOrDefault() is { } node
+                && Tag.PrintParentClosingTagStartWithContent(node, context)
+            )
             {
                 return Doc.Null;
             }
+
+            if (
+                rawNode.Attributes.Length == 0
+                && rawNode.Nodes is [{ NodeType: XmlNodeType.Text }]
+                && rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Strict
+            )
+            {
+                return Doc.Null;
+            }
+
+            if (
+                rawNode.XmlWhitespaceSensitivity is XmlWhitespaceSensitivity.Strict
+                && rawNode.Nodes is [{ NodeType: XmlNodeType.Text }]
+                && rawNode.Nodes[0].Value.TrimEnd(' ')[^1] is '\r' or '\n'
+            )
+            {
+                return Doc.Null;
+            }
+
             return Doc.SoftLine;
         }
 
